@@ -5,14 +5,14 @@ import { serializeBug } from "@/lib/serialize";
 import { recordEvent } from "@/lib/events";
 
 const BulkSchema = z.object({
-  bugIds: z.array(z.string()).min(1, "At least one bug ID is required"),
+  bugIds: z.array(z.string()).min(1, "At least one bug ID is required").max(100, "Cannot process more than 100 bugs at once"),
   action: z.discriminatedUnion("type", [
     z.object({ type: z.literal("status"), value: z.enum(["open", "closed"]) }),
     z.object({ type: z.literal("priority"), value: z.enum(["low", "medium", "high", "critical"]) }),
     z.object({ type: z.literal("stage"), value: z.enum(["dev", "staging", "production"]) }),
-    z.object({ type: z.literal("addLabel"), value: z.string() }),
-    z.object({ type: z.literal("removeLabel"), value: z.string() }),
-    z.object({ type: z.literal("assignee"), value: z.string().nullable() }),
+    z.object({ type: z.literal("addLabel"), value: z.string().max(100) }),
+    z.object({ type: z.literal("removeLabel"), value: z.string().max(100) }),
+    z.object({ type: z.literal("assignee"), value: z.string().nullable().max(200) }),
     z.object({ type: z.literal("delete") }),
   ]),
 });

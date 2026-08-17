@@ -47,6 +47,8 @@ model Bug {
   @@index([priority])
   @@index([environmentStage])
   @@index([updatedAt])
+  @@index([assignee])
+  @@index([reporter])
 }
 
 model Label {
