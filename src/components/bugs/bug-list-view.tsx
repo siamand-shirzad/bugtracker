@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   AlertTriangle,
   Bug as BugIcon,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -1053,82 +1054,148 @@ function GroupedBugList({
         if (bugs.length === 0) return null
         const groupMeta = getGroupMeta(groupBy, key)
         return (
-          <Card key={key} className="overflow-hidden">
-            {/* Group header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30">
-              <div className="flex items-center gap-2">
-                {groupMeta.dot && (
-                  <span className={cn("h-2 w-2 rounded-full", groupMeta.dot)} />
-                )}
-                {groupMeta.icon && <span className="text-sm">{groupMeta.icon}</span>}
-                <span className="text-sm font-semibold">{groupMeta.label}</span>
-                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 tabular-nums">
-                  {bugs.length}
-                </Badge>
-              </div>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                {bugs.filter((b) => b.status === "open").length} open ·{" "}
-                {bugs.filter((b) => b.status === "closed").length} closed
-              </span>
-            </div>
-            {/* Group rows */}
-            <div className="divide-y">
-              {bugs.map((bug, idx) => {
-                const isSelected = selected.has(bug.id)
-                return (
-                  <div
-                    key={bug.id}
-                    onClick={() => selectBug(bug.id)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 cursor-pointer group hover:bg-accent/50 transition-colors animate-fade-in",
-                      isSelected && "bg-primary/5",
-                    )}
-                    style={{ animationDelay: `${Math.min(idx * 20, 150)}ms` }}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleSelect(bug.id)
-                      }}
-                      aria-label={`Select ${bug.summary}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {bug.jiraId && (
-                          <span className="text-[11px] font-mono text-muted-foreground shrink-0">
-                            {bug.jiraId}
-                          </span>
-                        )}
-                        <span className="text-sm font-medium truncate group-hover:text-foreground">
-                          {bug.summary}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <StatusBadge status={bug.status} className="text-[10px]" />
-                        <PriorityBadge priority={bug.priority} className="text-[10px]" />
-                        <StageBadge stage={bug.environmentStage} className="text-[10px]" />
-                        {bug.labels.slice(0, 2).map((l) => (
-                          <LabelBadge key={l.id} label={l} />
-                        ))}
-                        {bug.labels.length > 2 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            +{bug.labels.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                      {formatDistanceToNow(new Date(bug.updatedAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
+          <GroupCard
+            key={key}
+            groupKey={key}
+            bugs={bugs}
+            groupMeta={groupMeta}
+            selected={selected}
+            toggleSelect={toggleSelect}
+            selectBug={selectBug}
+          />
         )
       })}
     </div>
+  )
+}
+
+// ---- Single group card with collapse + select-all ----
+function GroupCard({
+  groupKey,
+  bugs,
+  groupMeta,
+  selected,
+  toggleSelect,
+  selectBug,
+}: {
+  groupKey: string
+  bugs: Bug[]
+  groupMeta: { label: string; dot?: string; icon?: string }
+  selected: Set<string>
+  toggleSelect: (id: string) => void
+  selectBug: (id: string) => void
+}) {
+  const [collapsed, setCollapsed] = React.useState(false)
+  const allGroupSelected = bugs.every((b) => selected.has(b.id))
+  const someGroupSelected = bugs.some((b) => selected.has(b.id)) && !allGroupSelected
+  const groupSelectedCount = bugs.filter((b) => selected.has(b.id)).length
+
+  const toggleGroupSelectAll = () => {
+    if (allGroupSelected) {
+      bugs.forEach((b) => selected.has(b.id) && toggleSelect(b.id))
+    } else {
+      bugs.forEach((b) => !selected.has(b.id) && toggleSelect(b.id))
+    }
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Group header (clickable to collapse) */}
+      <div
+        className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors select-none"
+        onClick={() => setCollapsed((c) => !c)}
+      >
+        <div className="flex items-center gap-2">
+          {/* Collapse chevron */}
+          {collapsed ? (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          )}
+          {/* Group-level select-all checkbox */}
+          <Checkbox
+            checked={allGroupSelected ? true : someGroupSelected ? "indeterminate" : false}
+            onCheckedChange={toggleGroupSelectAll}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Select all in ${groupMeta.label}`}
+            className="shrink-0"
+          />
+          {groupMeta.dot && (
+            <span className={cn("h-2 w-2 rounded-full", groupMeta.dot)} />
+          )}
+          {groupMeta.icon && <span className="text-sm">{groupMeta.icon}</span>}
+          <span className="text-sm font-semibold">{groupMeta.label}</span>
+          <Badge variant="secondary" className="text-[10px] h-4 px-1.5 tabular-nums">
+            {bugs.length}
+          </Badge>
+          {groupSelectedCount > 0 && (
+            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-primary/5 text-primary border-primary/20">
+              {groupSelectedCount} selected
+            </Badge>
+          )}
+        </div>
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          {bugs.filter((b) => b.status === "open").length} open ·{" "}
+          {bugs.filter((b) => b.status === "closed").length} closed
+        </span>
+      </div>
+      {/* Group rows (hidden when collapsed) */}
+      {!collapsed && (
+        <div className="divide-y animate-fade-in">
+          {bugs.map((bug, idx) => {
+            const isSelected = selected.has(bug.id)
+            return (
+              <div
+                key={bug.id}
+                onClick={() => selectBug(bug.id)}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-2.5 cursor-pointer group hover:bg-accent/50 transition-colors animate-fade-in",
+                  isSelected && "bg-primary/5",
+                )}
+                style={{ animationDelay: `${Math.min(idx * 20, 150)}ms` }}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleSelect(bug.id)
+                  }}
+                  aria-label={`Select ${bug.summary}`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {bug.jiraId && (
+                      <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                        {bug.jiraId}
+                      </span>
+                    )}
+                    <span className="text-sm font-medium truncate group-hover:text-foreground">
+                      {bug.summary}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <StatusBadge status={bug.status} className="text-[10px]" />
+                    <PriorityBadge priority={bug.priority} className="text-[10px]" />
+                    <StageBadge stage={bug.environmentStage} className="text-[10px]" />
+                    {bug.labels.slice(0, 2).map((l) => (
+                      <LabelBadge key={l.id} label={l} />
+                    ))}
+                    {bug.labels.length > 2 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        +{bug.labels.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                  {formatDistanceToNow(new Date(bug.updatedAt), { addSuffix: true })}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
   )
 }
 

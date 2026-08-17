@@ -1441,3 +1441,99 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 The group-by feature (by assignee/priority/stage/status) is functional with colored
 group headers and per-group open/closed stats.
+
+---
+
+# Round 10 — Collapsible Groups & Group-Level Select (Task ID: 10)
+
+## Current status assessment (start of round)
+
+Round 9 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 8 items;
+this round tackled the top 2: collapsible groups and group-level "select all".
+
+## Goals for this round
+
+1. **Collapsible groups** — click group header to expand/collapse
+2. **Group-level "select all"** — checkbox in group header
+3. **Styling polish** — chevron animations, "N selected" badge per group
+
+## Completed modifications
+
+### Enhanced `src/components/bugs/bug-list-view.tsx`
+- **Extracted `GroupCard` component** — each group is now a self-contained component
+  with its own `collapsed` state (default: expanded).
+- **Collapsible group headers** — clicking the header toggles the `collapsed` state.
+  A chevron icon (ChevronDown when expanded, ChevronRight when collapsed) provides
+  visual feedback. The header has `cursor-pointer` + `select-none` for UX.
+- **Group-level "select all" checkbox** — a Checkbox in the group header with
+  `indeterminate` state support:
+  - Checked (✓) when all bugs in the group are selected.
+  - Indeterminate (—) when some but not all are selected.
+  - Unchecked (○) when none are selected.
+  - Clicking it selects/deselects all bugs in the group.
+  - `stopPropagation` on the checkbox click prevents collapsing the group.
+- **"N selected" badge** — when bugs in a group are selected, a primary-tinted badge
+  appears next to the count badge showing "N selected".
+- **Collapse animation** — the rows container has `animate-fade-in` for smooth
+  appearance when expanding.
+- **Hover state** — group header has `hover:bg-muted/50` for visual feedback.
+
+### Refactored `GroupedBugList`
+- Simplified to map over groups and render `<GroupCard>` for each.
+- `GroupCard` encapsulates all the collapse + select-all + row rendering logic.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Group by "By priority" → 4 group cards render (Critical, High, Medium, Low) | ✅ |
+| Click Critical group header → collapses, bugs hidden | ✅ |
+| Click again → expands, bugs visible | ✅ |
+| Group-level "Select all in High" checkbox → selects all 3 High bugs | ✅ |
+| "3 selected" badge appears in High group header | ✅ |
+| Bulk toolbar shows "3 selected" | ✅ |
+| ChevronDown (expanded) → ChevronRight (collapsed) icon transitions | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/components/bugs/bug-list-view.tsx             ← + GroupCard component (collapse + select-all)
+```
+
+## Unresolved issues / risks
+
+1. **Collapsed state not persisted** — groups re-expand on page reload or when
+   switching group-by mode. Could persist to localStorage.
+2. **Group counts reflect current page only** — still not fixed from Round 9.
+3. **No "collapse all" / "expand all"** — could add a toolbar button.
+4. **Group-level select doesn't update the "select all visible" checkbox** in
+   the flat table header. They're independent.
+
+## Priority recommendations for the next phase
+
+1. **"Collapse all" / "Expand all" toolbar button**.
+2. **Persist collapsed state** to localStorage.
+3. **Settings page** — theme, default page size, default group-by.
+4. **WebSocket mini-service** for real-time notification push.
+5. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+6. **User model + NextAuth** — real identities for comment authors + assignees.
+7. **CSV import with PapaParse** — robust multi-line cell handling.
+8. **Bug detail "Edit history"** — show all edits inline (not just events).
+9. **Dashboard "assignee workload over time"** — stacked area per assignee.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+Collapsible groups with chevron animations and group-level "select all" with
+indeterminate state are functional.
