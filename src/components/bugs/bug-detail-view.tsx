@@ -11,6 +11,7 @@ import {
   ClipboardCopy,
   Cpu,
   FileCode2,
+  FileDown,
   FlaskConical,
   GitBranch,
   Globe,
@@ -60,7 +61,7 @@ import { LabelBadge } from "@/components/bugs/label-badge"
 import { ActivityTimeline } from "@/components/bugs/activity-timeline"
 import { CommentsSection } from "@/components/bugs/comments-section"
 import { RelatedBugsCard } from "@/components/bugs/related-bugs-card"
-import { useBug, useBugEvents, useDeleteBug, useUpdateBug } from "@/hooks/use-bugs"
+import { useBug, useBugComments, useBugEvents, useDeleteBug, useUpdateBug } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
 import {
   PRIORITY_CONFIG,
@@ -72,6 +73,7 @@ import { format } from "date-fns"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { reconstructTemplate } from "@/lib/template-parser"
+import { downloadBugAsMarkdown } from "@/lib/bug-export"
 
 export function BugDetailView() {
   const bugId = useBugStore((s) => s.selectedBugId)
@@ -80,6 +82,7 @@ export function BugDetailView() {
   const openEditForm = useBugStore((s) => s.openEditForm)
   const { data: bug, isLoading } = useBug(bugId)
   const { data: events, isLoading: eventsLoading } = useBugEvents(bugId)
+  const { data: commentsData } = useBugComments(bugId)
   const updateMut = useUpdateBug(bugId ?? "")
   const deleteMut = useDeleteBug()
 
@@ -121,6 +124,17 @@ export function BugDetailView() {
     } catch {
       // user cancelled share — no toast
     }
+  }
+
+  const handleExportMarkdown = () => {
+    if (!bug) return
+    const comments = (commentsData?.data ?? []).map((c) => ({
+      author: c.author,
+      body: c.body,
+      createdAt: c.createdAt,
+    }))
+    downloadBugAsMarkdown(bug, comments)
+    toast.success("Markdown downloaded")
   }
 
   if (!bugId) {
@@ -183,6 +197,10 @@ export function BugDetailView() {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleShare}>
             <Share2 className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportMarkdown}>
+            <FileDown className="h-4 w-4" />
+            <span className="hidden sm:inline">Export .md</span>
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopyTemplate}>
             <ClipboardCopy className="h-4 w-4" />

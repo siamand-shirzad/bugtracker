@@ -801,3 +801,140 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 1 test
 comment, all with realistic timestamps. Case-insensitive search, comments, deep-linking,
 date-range picker, and activity pagination are all functional.
+
+---
+
+# Round 5 — Markdown Comments, Export, Workload Widgets & Polish (Task ID: 5)
+
+## Current status assessment (start of round)
+
+Round 4 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled markdown rendering, bug export, dashboard widgets, and styling polish.
+
+## Goals for this round
+
+1. **Markdown rendering** for comment bodies (react-markdown) + formatting toolbar
+2. **Bug detail "Export as Markdown"** — download the whole bug as a .md file
+3. **Assignee workload chart** — stacked open/closed bars per assignee
+4. **Resolution time widget** — avg/min/max time from creation to close
+5. **Styling polish** — comment avatars, toolbar, gradient stat cards
+
+## Completed modifications
+
+### New library helper — `src/lib/bug-export.ts`
+- `bugToMarkdown(bug, comments)` — converts a bug + its comments into a standalone
+  Markdown document with: H1 title, meta table, Overview breadcrumb, Environment
+  table, Preconditions (bullets), Steps (numbered), Actual/Expected, Impact Analysis
+  (3 sub-sections), Technical Notes (fenced code block), Discussion (comments with
+  author + timestamp), and a footer with a deep link.
+- `downloadBugAsMarkdown(bug, comments)` — creates a Blob, triggers a download
+  with a slugified filename (`<jiraId-or-slug>.md`).
+
+### Enhanced API — `GET /api/bugs/stats`
+- Added `byAssignee`: groups all bugs by assignee, returns `{ name, open, closed, total }`
+  sorted by total descending. Includes "(unassigned)" for null assignees.
+- Added `resolutionTimeHours`: for each closed bug, finds the FIRST
+  `status_changed → closed` event, computes the delta from `bug.createdAt` to that
+  event, and returns `{ avg, min, max, count }` in hours.
+
+### Enhanced types — `src/lib/types.ts`
+- `BugStats` now includes `byAssignee` and `resolutionTimeHours`.
+
+### New UI component — `src/components/bugs/markdown.tsx`
+- Lightweight `Markdown` wrapper around `react-markdown` v10.
+- Themed styling for: headings (h1–h4), paragraphs, inline code (rose-tinted),
+  code blocks (muted bg, monospace), lists (disc/decimal), links (target=_blank,
+  rel=noopener), blockquotes (border-left), strong/em, horizontal rules.
+- No `remark-gfm` dependency (not installed) — tables/strikethrough omitted.
+
+### Enhanced `src/components/bugs/comments-section.tsx`
+- Comment bodies now rendered with the `Markdown` component instead of plain text.
+- Added a **markdown formatting toolbar** above the textarea with 8 buttons:
+  Bold (⌘B), Italic (⌘I), Inline code, Code block, Link, Blockquote, Bullet list,
+  Numbered list. Each button wraps/inserts syntax around the current selection and
+  restores the cursor position via `requestAnimationFrame` + `setSelectionRange`.
+- Added `⌘B` / `⌘I` keyboard shortcuts for bold/italic.
+- Toolbar buttons use `onMouseDown={preventDefault}` so the textarea doesn't lose
+  focus when clicking them.
+- "Markdown supported" hint in the toolbar's right side.
+
+### Enhanced `src/components/bugs/bug-detail-view.tsx`
+- Added an **"Export .md"** button in the header (FileDown icon) that calls
+  `downloadBugAsMarkdown(bug, comments)` and shows a "Markdown downloaded" toast.
+- Hooked up `useBugComments(bugId)` so the export includes the discussion thread.
+
+### Enhanced `src/components/bugs/dashboard-view.tsx`
+- Added a 2-column grid with two new widgets below the activity/platform row:
+  1. **AssigneeWorkloadCard** — stacked horizontal bars (amber=open, emerald=closed)
+     per assignee, with colored avatar circles (deterministic from name),
+     initials, and "X total · Y open · Z closed" labels. Caps at 6 assignees
+     with a "+N more" footer.
+  2. **ResolutionTimeCard** — 3 stat tiles (Average / Fastest / Slowest) with
+     colored backgrounds (amber/emerald/rose), smart formatting (m/h/d units),
+     and a footer explaining the computation method.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Dashboard: Assignee Workload shows Sara Chen (5 total, 3 open, 2 closed) + 3 more | ✅ |
+| Dashboard: Resolution Time shows Average 4.9d, Fastest 22.9h, Slowest 10d | ✅ |
+| Bug detail: Export .md button present + downloads `<slug>.md` file | ✅ |
+| Exported markdown has title, meta table, all 9 sections, comments, deep link | ✅ |
+| Comment with markdown (**bold**, *italic*, `code`, list, > blockquote) renders correctly | ✅ |
+| Markdown toolbar: 8 buttons present (Bold, Italic, Code, Code block, Link, Quote, UL, OL) | ✅ |
+| Comment textarea + ⌘+Enter to send + ⌘B/⌘I shortcuts | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+| Stats API returns `byAssignee` (4 entries) + `resolutionTimeHours` (avg=117h, count=8) | ✅ |
+
+## New file map (additions in this round)
+
+```
+src/lib/bug-export.ts                            ← bugToMarkdown + downloadBugAsMarkdown
+src/components/bugs/markdown.tsx                 ← Markdown renderer (react-markdown wrapper)
+src/app/api/bugs/stats/route.ts                  ← + byAssignee + resolutionTimeHours
+src/lib/types.ts                                 ← + BugStats.byAssignee + resolutionTimeHours
+src/components/bugs/comments-section.tsx         ← + Markdown rendering + formatting toolbar
+src/components/bugs/bug-detail-view.tsx          ← + Export .md button + useBugComments
+src/components/bugs/dashboard-view.tsx           ← + AssigneeWorkloadCard + ResolutionTimeCard
+```
+
+## Unresolved issues / risks
+
+1. **No `remark-gfm`** — tables and strikethrough aren't supported in markdown
+   rendering. Could install `remark-gfm` for full GitHub-flavored markdown.
+2. **Comment author identity** — still a free-text input. No real auth yet.
+3. **Resolution time** — based on the FIRST `status_changed → closed` event. If a
+   bug is reopened and closed again, only the first close is counted. Could
+   use the LAST close event instead, or compute time-to-final-close.
+4. **Assignee colors** — deterministic from name hash, but not configurable.
+5. **Export .md** — includes comments but not the activity timeline (events).
+   Could add an "Export with timeline" option.
+
+## Priority recommendations for the next phase
+
+1. **Install `remark-gfm`** for tables/strikethrough in markdown comments.
+2. **In-app notification bell** with unread count for new comments/events.
+3. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+4. **User model + NextAuth** — real identities for comment authors + assignees.
+5. **Watch/subscribe to bugs** — get notified on changes (requires auth).
+6. **CSV import with PapaParse** — robust multi-line cell handling.
+7. **WebSocket mini-service** for real-time comment + event push.
+8. **Dashboard "priority heatmap"** — priority × stage matrix showing counts.
+9. **Bug detail "copy as JSON"** — export the raw bug object for API debugging.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 2
+test comments (one with markdown formatting). Markdown rendering, the formatting
+toolbar, Export .md, assignee workload, and resolution time widgets are all functional.

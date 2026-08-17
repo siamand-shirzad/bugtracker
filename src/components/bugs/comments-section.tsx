@@ -2,7 +2,15 @@
 
 import * as React from "react"
 import {
+  Bold,
+  Code,
+  Code2,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
   MessageSquare,
+  Quote,
   Send,
   Trash2,
   Pencil,
@@ -34,6 +42,7 @@ import {
   useUpdateComment,
 } from "@/hooks/use-bugs"
 import type { BugComment } from "@/lib/types"
+import { Markdown } from "@/components/bugs/markdown"
 import { format, formatDistanceToNow, isToday } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -68,7 +77,70 @@ export function CommentsSection({ bugId }: { bugId: string }) {
 
   const [body, setBody] = React.useState("")
   const [author, setAuthor] = React.useState("")
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const comments = data?.data ?? []
+
+  // Markdown formatting helper — wraps/inserts syntax around the selection
+  const formatMarkdown = (type: "bold" | "italic" | "code" | "codeblock" | "link" | "ul" | "ol" | "quote") => {
+    const ta = textareaRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const selected = body.slice(start, end)
+    const before = body.slice(0, start)
+    const after = body.slice(end)
+    let wrapped = selected
+    let cursorOffset = 0
+    let cursorEnd = 0
+    switch (type) {
+      case "bold":
+        wrapped = `**${selected || "bold text"}**`
+        cursorOffset = 2; cursorEnd = wrapped.length - 2
+        break
+      case "italic":
+        wrapped = `*${selected || "italic text"}*`
+        cursorOffset = 1; cursorEnd = wrapped.length - 1
+        break
+      case "code":
+        wrapped = `\`${selected || "code"}\``
+        cursorOffset = 1; cursorEnd = wrapped.length - 1
+        break
+      case "codeblock":
+        wrapped = `\n\`\`\`\n${selected || "code block"}\n\`\`\`\n`
+        cursorOffset = 5; cursorEnd = wrapped.length - 5
+        break
+      case "link":
+        wrapped = `[${selected || "link text"}](https://)`
+        cursorOffset = 0; cursorEnd = wrapped.length - 9
+        break
+      case "ul":
+        wrapped = selected
+          ? selected.split("\n").map((l) => `- ${l}`).join("\n")
+          : "- list item"
+        cursorOffset = 0; cursorEnd = wrapped.length
+        break
+      case "ol":
+        wrapped = selected
+          ? selected.split("\n").map((l, i) => `${i + 1}. ${l}`).join("\n")
+          : "1. list item"
+        cursorOffset = 0; cursorEnd = wrapped.length
+        break
+      case "quote":
+        wrapped = selected
+          ? selected.split("\n").map((l) => `> ${l}`).join("\n")
+          : "> quote"
+        cursorOffset = 0; cursorEnd = wrapped.length
+        break
+    }
+    const next = before + wrapped + after
+    setBody(next)
+    requestAnimationFrame(() => {
+      ta.focus()
+      const selStart = start + cursorOffset
+      const selEnd = start + cursorEnd
+      ta.setSelectionRange(selStart, Math.max(selStart, selEnd))
+    })
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,16 +213,55 @@ export function CommentsSection({ bugId }: { bugId: string }) {
               />
             </div>
           </div>
+          {/* Markdown toolbar */}
+          <div className="flex items-center gap-0.5 flex-wrap rounded-md border bg-muted/30 p-0.5">
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("bold")} title="Bold (⌘B)">
+              <Bold className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("italic")} title="Italic (⌘I)">
+              <Italic className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <span className="w-px h-4 bg-border mx-0.5" />
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("code")} title="Inline code">
+              <Code className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("codeblock")} title="Code block">
+              <Code2 className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("link")} title="Link">
+              <LinkIcon className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("quote")} title="Blockquote">
+              <Quote className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <span className="w-px h-4 bg-border mx-0.5" />
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("ul")} title="Bullet list">
+              <List className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <MarkdownToolbarBtn onClick={() => formatMarkdown("ol")} title="Numbered list">
+              <ListOrdered className="h-3.5 w-3.5" />
+            </MarkdownToolbarBtn>
+            <span className="ml-auto text-[10px] text-muted-foreground pr-1.5 hidden sm:block">
+              Markdown supported
+            </span>
+          </div>
           <div className="relative">
             <Textarea
+              ref={textareaRef}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Write a comment… (markdown supported)"
+              placeholder="Write a comment…"
               className="min-h-[72px] text-sm resize-y scrollbar-thin pr-24"
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                   e.preventDefault()
                   if (body.trim()) handleSubmit(e)
+                } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+                  e.preventDefault()
+                  formatMarkdown("bold")
+                } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "i") {
+                  e.preventDefault()
+                  formatMarkdown("italic")
                 }
               }}
             />
@@ -266,8 +377,8 @@ function CommentItem({ bugId, comment }: { bugId: string; comment: BugComment })
             </div>
           </div>
         ) : (
-          <div className="relative rounded-lg bg-muted/50 border px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words">
-            {comment.body}
+          <div className="relative rounded-lg bg-muted/50 border px-3 py-2 leading-relaxed break-words">
+            <Markdown>{comment.body}</Markdown>
             {/* Hover actions */}
             <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
@@ -309,5 +420,27 @@ function CommentItem({ bugId, comment }: { bugId: string; comment: BugComment })
         )}
       </div>
     </div>
+  )
+}
+
+function MarkdownToolbarBtn({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      title={title}
+      className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+    >
+      {children}
+    </button>
   )
 }

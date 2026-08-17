@@ -28,8 +28,10 @@ import {
   Flame,
   Globe,
   Plus,
+  Timer,
   TrendingDown,
   TrendingUp,
+  Users,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -503,6 +505,12 @@ export function DashboardView() {
         <GlobalActivityFeed limit={15} />
         <PlatformBreakdownCard stats={stats} loading={isLoading} />
       </div>
+
+      {/* Assignee workload + Resolution time */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AssigneeWorkloadCard stats={stats} loading={isLoading} />
+        <ResolutionTimeCard stats={stats} loading={isLoading} />
+      </div>
     </div>
   )
 }
@@ -657,5 +665,197 @@ function PlatformBreakdownCard({ stats, loading }: PlatformBreakdownCardProps) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+interface AssigneeWorkloadCardProps {
+  stats: ReturnType<typeof useBugStats>["data"]
+  loading: boolean
+}
+
+const ASSIGNEE_COLORS = [
+  "bg-rose-500",
+  "bg-emerald-500",
+  "bg-violet-500",
+  "bg-amber-500",
+  "bg-cyan-500",
+  "bg-fuchsia-500",
+  "bg-teal-500",
+  "bg-orange-500",
+]
+
+function AssigneeWorkloadCard({ stats, loading }: AssigneeWorkloadCardProps) {
+  const assignees = stats?.byAssignee ?? []
+  const maxTotal = Math.max(1, ...assignees.map((a) => a.total))
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          Assignee Workload
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Open vs closed bugs per assignee
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : assignees.length === 0 ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <Users className="h-7 w-7 mx-auto opacity-40 mb-2" />
+            No assignees yet
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {assignees.slice(0, 6).map((a, idx) => {
+              const name = a.name ?? "Unassigned"
+              const openPct = (a.open / maxTotal) * 100
+              const closedPct = (a.closed / maxTotal) * 100
+              const color = ASSIGNEE_COLORS[idx % ASSIGNEE_COLORS.length]
+              const initials = name === "Unassigned"
+                ? "?"
+                : name.split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+              return (
+                <div key={name} className="group">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn("h-6 w-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold shrink-0", color)}>
+                        {initials}
+                      </span>
+                      <span className="text-xs font-medium truncate">{name}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-2">
+                      {a.total} total · {a.open} open · {a.closed} closed
+                    </span>
+                  </div>
+                  {/* Stacked bar: open (amber) + closed (emerald) */}
+                  <div className="flex h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 transition-all"
+                      style={{ width: `${openPct}%` }}
+                      title={`${a.open} open`}
+                    />
+                    <div
+                      className="h-full bg-emerald-500 transition-all"
+                      style={{ width: `${closedPct}%` }}
+                      title={`${a.closed} closed`}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+            {assignees.length > 6 && (
+              <p className="text-[10px] text-muted-foreground text-center pt-1">
+                + {assignees.length - 6} more assignees
+              </p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface ResolutionTimeCardProps {
+  stats: ReturnType<typeof useBugStats>["data"]
+  loading: boolean
+}
+
+function formatHours(hours: number): string {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours < 24) return `${hours.toFixed(1)}h`
+  const days = hours / 24
+  if (days < 7) return `${days.toFixed(1)}d`
+  return `${Math.round(days)}d`
+}
+
+function ResolutionTimeCard({ stats, loading }: ResolutionTimeCardProps) {
+  const rt = stats?.resolutionTimeHours
+  const hasData = rt && rt.count > 0 && rt.avg !== null
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Timer className="h-4 w-4 text-muted-foreground" />
+          Resolution Time
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Time from creation to close (based on {rt?.count ?? 0} closed bugs)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="grid grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        ) : !hasData ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <Timer className="h-7 w-7 mx-auto opacity-40 mb-2" />
+            No closed bugs with resolution events yet
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <ResolutionStat
+              label="Average"
+              value={formatHours(rt!.avg!)}
+              accent="text-foreground"
+              bg="bg-amber-50 dark:bg-amber-950/30"
+              border="border-amber-200 dark:border-amber-900"
+            />
+            <ResolutionStat
+              label="Fastest"
+              value={formatHours(rt!.min!)}
+              accent="text-emerald-600 dark:text-emerald-400"
+              bg="bg-emerald-50 dark:bg-emerald-950/30"
+              border="border-emerald-200 dark:border-emerald-900"
+            />
+            <ResolutionStat
+              label="Slowest"
+              value={formatHours(rt!.max!)}
+              accent="text-rose-600 dark:text-rose-400"
+              bg="bg-rose-50 dark:bg-rose-950/30"
+              border="border-rose-200 dark:border-rose-900"
+            />
+          </div>
+        )}
+        {hasData && (
+          <p className="text-[10px] text-muted-foreground text-center mt-3">
+            Computed from the first &ldquo;status changed to closed&rdquo; event per bug
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ResolutionStat({
+  label,
+  value,
+  accent,
+  bg,
+  border,
+}: {
+  label: string
+  value: string
+  accent: string
+  bg: string
+  border: string
+}) {
+  return (
+    <div className={cn("rounded-lg border p-3 text-center", bg, border)}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+        {label}
+      </p>
+      <p className={cn("text-xl font-bold tabular-nums", accent)}>{value}</p>
+    </div>
   )
 }

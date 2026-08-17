@@ -72,6 +72,13 @@ export interface BugStats {
   byPriority: { name: string; value: number; fill: string }[]
   byStage: { name: string; value: number; fill: string }[]
   byPlatform: { name: string; value: number }[]
+  byAssignee: { name: string | null; open: number; closed: number; total: number }[]
+  resolutionTimeHours: {
+    avg: number | null
+    min: number | null
+    max: number | null
+    count: number
+  }
   recent: Bug[]
 }
 
