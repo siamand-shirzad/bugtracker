@@ -59,6 +59,13 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
         window.dispatchEvent(new CustomEvent("ib4g:focus-search")),
     },
     {
+      keys: "] / [",
+      description: "Cycle assignee filter (next / prev)",
+      group: "Actions",
+      action: () =>
+        window.dispatchEvent(new CustomEvent("ib4g:cycle-assignee", { detail: { direction: "next" } })),
+    },
+    {
       keys: "?",
       description: "Show this shortcuts help",
       group: "Other",
@@ -175,6 +182,14 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
       } else if (key === "?") {
         e.preventDefault()
         handlersRef.current.onShowShortcutsHelp?.()
+      } else if (key === "[" || key === "]") {
+        // Cycle assignees (only on the bugs list view)
+        const state = useBugStore.getState()
+        if (state.view !== "bugs" || state.selectedBugId) return
+        e.preventDefault()
+        window.dispatchEvent(
+          new CustomEvent("ib4g:cycle-assignee", { detail: { direction: key === "]" ? "next" : "prev" } })
+        )
       }
     }
 

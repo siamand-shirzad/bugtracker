@@ -578,3 +578,19 @@ export function useAssignees() {
     staleTime: 60_000,
   })
 }
+
+// ---- Burndown (open bugs over time) ----
+export function useBugBurndown(days = 30) {
+  return useQuery<{ points: { date: string; open: number; closed: number }[]; currentOpen: number; peakOpen: number; totalClosed: number }>({
+    queryKey: [...bugKeys.all, "burndown", days],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/burndown?days=${days}`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch burndown")
+      }
+      return res.json()
+    },
+    staleTime: 30_000,
+  })
+}

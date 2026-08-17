@@ -1231,3 +1231,113 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 Clickable heatmap navigation, auto-mark-read notifications, cURL export, and the
 assignee filter dropdown are all functional.
+
+---
+
+# Round 8 — Burndown Chart, Assignee Cycling & Polish (Task ID: 8)
+
+## Current status assessment (start of round)
+
+Round 7 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled the burndown chart, assignee cycling shortcuts, and verified
+that heatmap navigation already preserves filters.
+
+## Goals for this round
+
+1. **Verify heatmap preserves filters** — confirmed the store's `setPriority`/`setStage`
+   already spread `...s.filters`, so search/platform/assignee are preserved.
+2. **Dashboard burn-down chart** — open bugs over time (new API + chart widget)
+3. **Keyboard shortcut to cycle assignees** — `[` / `]` to go prev/next
+4. **Styling polish** — burndown chart with gradient area fill
+
+## Completed modifications
+
+### New API route — `GET /api/bugs/burndown?days=N`
+- Computes a daily series of "open bug count at end of day" for the last N days.
+- For each bug: if `createdAt <= endOfDay(D)` and (no close event OR first close
+  event > endOfDay(D)), it's open on day D.
+- Returns `{ points: [{date, open, closed}], currentOpen, peakOpen, totalClosed }`.
+- Uses the first `status_changed → closed` event per bug (earliest close).
+
+### New hook — `useBugBurndown(days=30)`
+- Fetches the burndown series, 30s staleTime.
+
+### New dashboard widget — `BurndownCard`
+- Area chart showing the open-bug count over time with an amber gradient fill.
+- Header shows: "Now open" (current), "Peak" (max), "Closed" (total closed events).
+- Uses the same `trendDays` state as the Activity Trend chart (7/14/30/90 picker).
+- CartesianGrid, custom tooltip with full date, themed colors.
+
+### Enhanced keyboard shortcuts — `src/hooks/use-keyboard-shortcuts.ts`
+- Added `[` (prev) and `]` (next) shortcuts to cycle the assignee filter.
+- Only fires when on the bugs list view (not in bug detail or dialogs).
+- Dispatches a custom `ib4g:cycle-assignee` event with `{ direction: "next" | "prev" }`.
+- Added the shortcut to the `shortcuts` array so it appears in the `?` help dialog.
+
+### Enhanced bug-list-view — assignee cycling listener
+- Listens for `ib4g:cycle-assignee` events.
+- Builds the option list: `["all", ...assigneeNames]`.
+- Finds the current assignee's index, increments/decrements with wraparound.
+- Sets the new assignee + shows a toast: "Assignee: Sara Chen".
+- Depends on `assignees` from `useAssignees()`.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Burndown API returns 30 points, currentOpen=4, peakOpen=4, totalClosed=8 | ✅ |
+| Dashboard: "Open Bugs Burndown" chart renders with "Now open 4, Peak 4, Closed 8" | ✅ |
+| `]` shortcut on bug list → assignee filter cycles to "Sara Chen (5)" | ✅ |
+| `[` shortcut → cycles back to "All assignees" | ✅ |
+| Shortcuts help dialog (`?`) shows "Cycle assignee filter (next / prev) ] / [" | ✅ |
+| Heatmap navigation preserves search/platform/assignee filters (store spreads) | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/app/api/bugs/burndown/route.ts                ← GET open-bugs-over-time series
+src/hooks/use-bugs.ts                             ← + useBugBurndown hook
+src/components/bugs/dashboard-view.tsx            ← + BurndownCard widget
+src/hooks/use-keyboard-shortcuts.ts               ← + [ / ] cycle assignee shortcuts
+src/components/bugs/bug-list-view.tsx             ← + ib4g:cycle-assignee event listener
+```
+
+## Unresolved issues / risks
+
+1. **Burndown uses first close event** — if a bug is reopened and closed again,
+   only the first close counts. The bug would appear as "closed" from the first
+   close date onward, even during its reopened period.
+2. **Burn-down peak is flat** — with only 12 seed bugs over 30 days, the chart
+   doesn't show a dramatic burn-down pattern. Would look better with more data.
+3. **Assignee cycling toast** — shows on every cycle. Could be annoying if
+   cycling rapidly. Could debounce or use a different feedback mechanism.
+4. **No "Unassigned" in cycling** — the cycle goes `all → Sara → Marco → Priya → all`,
+   skipping the "Unassigned" option. Could include it.
+
+## Priority recommendations for the next phase
+
+1. **WebSocket mini-service** for real-time notification push.
+2. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+3. **User model + NextAuth** — real identities for comment authors + assignees.
+4. **Watch/subscribe to bugs** — get notified on changes (requires auth).
+5. **CSV import with PapaParse** — robust multi-line cell handling.
+6. **Bug detail "Edit history"** — show all edits inline (not just events).
+7. **Dashboard "assignee workload over time"** — stacked area per assignee.
+8. **Bug list "group by"** — group by assignee/priority/stage.
+9. **Settings page** — theme, notification preferences, default filters.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+The burndown chart, assignee cycling shortcuts, and all previous features are functional.

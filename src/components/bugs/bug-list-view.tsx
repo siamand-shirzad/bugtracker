@@ -267,6 +267,24 @@ export function BugListView() {
     return () => window.removeEventListener("ib4g:focus-search", handler)
   }, [])
 
+  // Cycle assignee filter via [ / ] keyboard shortcuts
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { direction: "next" | "prev" }
+      if (!assignees.length) return
+      // Build the list of options: ["all", ...assignee names]
+      const options = ["all", ...assignees.map((a) => a.name)]
+      const current = filters.assignee ?? "all"
+      const currentIdx = options.indexOf(current)
+      const dir = detail.direction === "next" ? 1 : -1
+      const nextIdx = (currentIdx + dir + options.length) % options.length
+      setAssignee(options[nextIdx])
+      toast.info(`Assignee: ${options[nextIdx] === "all" ? "All" : options[nextIdx]}`)
+    }
+    window.addEventListener("ib4g:cycle-assignee", handler)
+    return () => window.removeEventListener("ib4g:cycle-assignee", handler)
+  }, [assignees, filters.assignee, setAssignee])
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}

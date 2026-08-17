@@ -45,7 +45,7 @@ import { StatusBadge } from "@/components/bugs/status-badge"
 import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
 import { LabelBadge } from "@/components/bugs/label-badge"
-import { useBugStats, useBugTrend } from "@/hooks/use-bugs"
+import { useBugStats, useBugTrend, useBugBurndown } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
 import { PRIORITY_CONFIG, STATUS_CONFIG, STAGE_CONFIG } from "@/lib/constants"
 import type { BugPriority, BugStatus, EnvironmentStage } from "@/lib/types"
@@ -243,6 +243,9 @@ export function DashboardView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Burndown chart (open bugs over time) */}
+      <BurndownCard days={trendDays} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1055,6 +1058,119 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
               </tfoot>
             </table>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface BurndownCardProps {
+  days: number
+}
+
+function BurndownCard({ days }: BurndownCardProps) {
+  const { data, isLoading } = useBugBurndown(days)
+  const points = data?.points ?? []
+  const currentOpen = data?.currentOpen ?? 0
+  const peakOpen = data?.peakOpen ?? 0
+  const totalClosed = data?.totalClosed ?? 0
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+              Open Bugs Burndown
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Open bug count at end of each day — last {days} days
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-amber-500" />
+              <span className="text-muted-foreground">Now open</span>
+              <span className="font-semibold tabular-nums">{currentOpen}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-rose-500" />
+              <span className="text-muted-foreground">Peak</span>
+              <span className="font-semibold tabular-nums">{peakOpen}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+              <span className="text-muted-foreground">Closed</span>
+              <span className="font-semibold tabular-nums">{totalClosed}</span>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-2">
+        {isLoading ? (
+          <Skeleton className="h-[200px] w-full" />
+        ) : points.length === 0 ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <TrendingDown className="h-7 w-7 mx-auto opacity-40 mb-2" />
+            No data yet
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart
+              data={points}
+              margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
+            >
+              <defs>
+                <linearGradient id="openBurndownGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--chart-4)" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="var(--chart-4)" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--border)"
+                vertical={false}
+                opacity={0.5}
+              />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(d: string) => format(new Date(d), "MMM d")}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                width={28}
+              />
+              <Tooltip
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+                contentStyle={{
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--popover)",
+                  color: "var(--popover-foreground)",
+                  fontSize: 12,
+                }}
+                labelFormatter={(d: string) => format(new Date(d), "EEEE, MMM d")}
+              />
+              <Area
+                type="monotone"
+                dataKey="open"
+                name="Open"
+                stroke="var(--chart-4)"
+                strokeWidth={2}
+                fill="url(#openBurndownGrad)"
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         )}
       </CardContent>
     </Card>
