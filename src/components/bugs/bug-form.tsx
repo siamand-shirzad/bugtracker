@@ -367,31 +367,31 @@ export function BugForm({
 // local helpers to avoid importing label-badge (which has onClick semantics)
 function LABEL_BG(color: string) {
   const map: Record<string, string> = {
-    neutral: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
-    rose: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900",
-    orange: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-900",
-    amber: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900",
-    emerald: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900",
-    teal: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-900",
-    cyan: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-900",
-    violet: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-900",
-    fuchsia: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:border-fuchsia-900",
-    slate: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
+    neutral: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    rose: "bg-rose-50 text-rose-600 border-rose-200/50 dark:bg-rose-950/20 dark:text-rose-300/70 dark:border-rose-900/40",
+    orange: "bg-orange-50 text-orange-600 border-orange-200/50 dark:bg-orange-950/20 dark:text-orange-300/70 dark:border-orange-900/40",
+    amber: "bg-amber-50 text-amber-600 border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-300/70 dark:border-amber-900/40",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-300/70 dark:border-emerald-900/40",
+    teal: "bg-teal-50 text-teal-600 border-teal-200/50 dark:bg-teal-950/20 dark:text-teal-300/70 dark:border-teal-900/40",
+    cyan: "bg-cyan-50 text-cyan-600 border-cyan-200/50 dark:bg-cyan-950/20 dark:text-cyan-300/70 dark:border-cyan-900/40",
+    violet: "bg-violet-50 text-violet-600 border-violet-200/50 dark:bg-violet-950/20 dark:text-violet-300/70 dark:border-violet-900/40",
+    fuchsia: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200/50 dark:bg-fuchsia-950/20 dark:text-fuchsia-300/70 dark:border-fuchsia-900/40",
+    slate: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
   }
   return map[color] ?? map.neutral
 }
 function LABEL_DOT(color: string) {
   const map: Record<string, string> = {
-    neutral: "bg-slate-400",
-    rose: "bg-rose-500",
-    orange: "bg-orange-500",
-    amber: "bg-amber-500",
-    emerald: "bg-emerald-500",
-    teal: "bg-teal-500",
-    cyan: "bg-cyan-500",
-    violet: "bg-violet-500",
-    fuchsia: "bg-fuchsia-500",
-    slate: "bg-slate-500",
+    neutral: "bg-stone-400",
+    rose: "bg-rose-300",
+    orange: "bg-orange-300",
+    amber: "bg-amber-300",
+    emerald: "bg-emerald-300",
+    teal: "bg-teal-300",
+    cyan: "bg-cyan-300",
+    violet: "bg-violet-300",
+    fuchsia: "bg-fuchsia-300",
+    slate: "bg-stone-400",
   }
   return map[color] ?? map.neutral
 }

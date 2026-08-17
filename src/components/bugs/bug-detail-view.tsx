@@ -355,7 +355,7 @@ export function BugDetailView() {
                 <ul className="space-y-1.5">
                   {bug.preconditions.map((p, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-stone-400 shrink-0" />
                       <span>{p}</span>
                     </li>
                   ))}

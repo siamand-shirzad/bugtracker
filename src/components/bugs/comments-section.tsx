@@ -47,14 +47,14 @@ import { format, formatDistanceToNow, isToday } from "date-fns"
 import { cn } from "@/lib/utils"
 
 const AVATAR_COLORS = [
-  "bg-rose-500",
-  "bg-emerald-500",
-  "bg-violet-500",
-  "bg-amber-500",
-  "bg-cyan-500",
-  "bg-fuchsia-500",
-  "bg-teal-500",
-  "bg-orange-500",
+  "bg-red-400",
+  "bg-stone-400",
+  "bg-stone-500",
+  "bg-stone-400",
+  "bg-stone-400",
+  "bg-stone-400",
+  "bg-stone-400",
+  "bg-stone-400",
 ]
 
 function avatarColor(name: string): string {

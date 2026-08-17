@@ -93,7 +93,7 @@ export function DashboardView() {
           value={stats?.open}
           icon={CircleDot}
           accent="text-amber-600 dark:text-amber-400"
-          accentBar="bg-amber-500"
+          accentBar="bg-stone-400"
           loading={isLoading}
           hint="Awaiting resolution"
         />
@@ -102,7 +102,7 @@ export function DashboardView() {
           value={stats?.closed}
           icon={CheckCircle2}
           accent="text-emerald-600 dark:text-emerald-400"
-          accentBar="bg-emerald-500"
+          accentBar="bg-stone-300"
           loading={isLoading}
           hint="Resolved & verified"
         />
@@ -111,7 +111,7 @@ export function DashboardView() {
           value={stats?.critical}
           icon={AlertOctagon}
           accent="text-rose-600 dark:text-rose-400"
-          accentBar="bg-rose-500"
+          accentBar="bg-red-400"
           loading={isLoading}
           hint="Needs immediate attention"
         />
@@ -134,12 +134,12 @@ export function DashboardView() {
               {trend && (
                 <div className="flex items-center gap-3 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-sm bg-rose-500" />
+                    <span className="h-2 w-2 rounded-sm bg-red-400/60" />
                     <span className="text-muted-foreground">Opened</span>
                     <span className="font-semibold tabular-nums">{trend.totalOpened}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+                    <span className="h-2 w-2 rounded-sm bg-stone-400/60" />
                     <span className="text-muted-foreground">Closed</span>
                     <span className="font-semibold tabular-nums">{trend.totalClosed}</span>
                   </div>
@@ -681,14 +681,14 @@ interface AssigneeWorkloadCardProps {
 }
 
 const ASSIGNEE_COLORS = [
-  "bg-rose-500",
-  "bg-emerald-500",
-  "bg-violet-500",
-  "bg-amber-500",
-  "bg-cyan-500",
-  "bg-fuchsia-500",
-  "bg-teal-500",
-  "bg-orange-500",
+  "bg-stone-400",
+  "bg-stone-500",
+  "bg-stone-600",
+  "bg-stone-300",
+  "bg-stone-400",
+  "bg-stone-500",
+  "bg-stone-600",
+  "bg-stone-300",
 ]
 
 function AssigneeWorkloadCard({ stats, loading }: AssigneeWorkloadCardProps) {
@@ -744,12 +744,12 @@ function AssigneeWorkloadCard({ stats, loading }: AssigneeWorkloadCardProps) {
                   {/* Stacked bar: open (amber) + closed (emerald) */}
                   <div className="flex h-2 rounded-full bg-muted overflow-hidden">
                     <div
-                      className="h-full bg-amber-500 transition-all"
+                      className="h-full bg-stone-400 transition-all"
                       style={{ width: `${openPct}%` }}
                       title={`${a.open} open`}
                     />
                     <div
-                      className="h-full bg-emerald-500 transition-all"
+                      className="h-full bg-stone-300 transition-all"
                       style={{ width: `${closedPct}%` }}
                       title={`${a.closed} closed`}
                     />
@@ -876,10 +876,10 @@ const HEATMAP_PRIORITIES = ["critical", "high", "medium", "low"] as const
 const HEATMAP_STAGES = ["dev", "staging", "production"] as const
 
 const PRIORITY_HEAT: Record<string, string> = {
-  critical: "bg-rose-500",
-  high: "bg-orange-500",
-  medium: "bg-amber-500",
-  low: "bg-sky-500",
+  critical: "bg-red-400",
+  high: "bg-orange-300",
+  medium: "bg-stone-300",
+  low: "bg-stone-200",
 }
 
 function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
@@ -1090,17 +1090,17 @@ function BurndownCard({ days }: BurndownCardProps) {
           </div>
           <div className="flex items-center gap-3 text-[11px] flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-amber-500" />
+              <span className="h-2 w-2 rounded-sm bg-stone-400" />
               <span className="text-muted-foreground">Now open</span>
               <span className="font-semibold tabular-nums">{currentOpen}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-rose-500" />
+              <span className="h-2 w-2 rounded-sm bg-red-400" />
               <span className="text-muted-foreground">Peak</span>
               <span className="font-semibold tabular-nums">{peakOpen}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+              <span className="h-2 w-2 rounded-sm bg-stone-300" />
               <span className="text-muted-foreground">Closed</span>
               <span className="font-semibold tabular-nums">{totalClosed}</span>
             </div>

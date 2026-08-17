@@ -34,15 +34,15 @@ const EVENT_META: Record<
   string,
   { icon: React.ComponentType<{ className?: string }>; color: string; dot: string }
 > = {
-  created: { icon: Plus, color: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500" },
-  status_changed: { icon: CircleDot, color: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
-  priority_changed: { icon: AlertCircle, color: "text-rose-600 dark:text-rose-400", dot: "bg-rose-500" },
-  stage_changed: { icon: GitBranch, color: "text-violet-600 dark:text-violet-400", dot: "bg-violet-500" },
-  assignee_changed: { icon: User, color: "text-sky-600 dark:text-sky-400", dot: "bg-sky-500" },
-  labels_changed: { icon: Tags, color: "text-fuchsia-600 dark:text-fuchsia-400", dot: "bg-fuchsia-500" },
-  summary_changed: { icon: Pencil, color: "text-slate-600 dark:text-slate-400", dot: "bg-slate-500" },
-  details_updated: { icon: Sparkles, color: "text-teal-600 dark:text-teal-400", dot: "bg-teal-500" },
-  deleted: { icon: Trash2, color: "text-rose-600 dark:text-rose-400", dot: "bg-rose-500" },
+  created: { icon: Plus, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-400" },
+  status_changed: { icon: CircleDot, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-400" },
+  priority_changed: { icon: AlertCircle, color: "text-red-500/70 dark:text-red-400/70", dot: "bg-red-400" },
+  stage_changed: { icon: GitBranch, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-500" },
+  assignee_changed: { icon: User, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-500" },
+  labels_changed: { icon: Tags, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-400" },
+  summary_changed: { icon: Pencil, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-500" },
+  details_updated: { icon: Sparkles, color: "text-stone-500 dark:text-stone-400", dot: "bg-stone-400" },
+  deleted: { icon: Trash2, color: "text-red-500/70 dark:text-red-400/70", dot: "bg-red-400" },
 }
 
 export function GlobalActivityFeed({ limit = 15 }: GlobalActivityFeedProps) {

@@ -32,14 +32,14 @@ export const STATUS_CONFIG: Record<
   open: {
     label: "Open",
     icon: CircleDot,
-    badge: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900",
-    dot: "bg-amber-500",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
   },
   closed: {
     label: "Closed",
     icon: CheckCircle2,
-    badge: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900",
-    dot: "bg-emerald-500",
+    badge: "bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-800/40 dark:text-stone-400 dark:border-stone-700",
+    dot: "bg-stone-300",
   },
 }
 
@@ -57,29 +57,29 @@ export const PRIORITY_CONFIG: Record<
   low: {
     label: "Low",
     icon: CircleDot,
-    badge: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
-    dot: "bg-slate-400",
+    badge: "bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-800/40 dark:text-stone-400 dark:border-stone-700",
+    dot: "bg-stone-300",
     order: 0,
   },
   medium: {
     label: "Medium",
     icon: CircleDot,
-    badge: "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-900",
-    dot: "bg-sky-500",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
     order: 1,
   },
   high: {
     label: "High",
     icon: AlertTriangle,
-    badge: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-900",
-    dot: "bg-orange-500",
+    badge: "bg-orange-50 text-orange-600 border-orange-200/60 dark:bg-orange-950/30 dark:text-orange-300/80 dark:border-orange-900/50",
+    dot: "bg-orange-400",
     order: 2,
   },
   critical: {
     label: "Critical",
     icon: AlertTriangle,
-    badge: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900",
-    dot: "bg-rose-500",
+    badge: "bg-red-50 text-red-600 border-red-200/60 dark:bg-red-950/30 dark:text-red-300/80 dark:border-red-900/50",
+    dot: "bg-red-400",
     order: 3,
   },
 }
@@ -94,20 +94,20 @@ export const STAGE_CONFIG: Record<
   dev: {
     label: "Dev",
     icon: "💻",
-    badge: "bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-900",
-    dot: "bg-violet-500",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
   },
   staging: {
     label: "Staging",
     icon: "🧪",
-    badge: "bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-900",
-    dot: "bg-cyan-500",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
   },
   production: {
     label: "Production",
     icon: "🚀",
-    badge: "bg-red-100 text-red-800 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-900",
-    dot: "bg-red-500",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
   },
 }
 
@@ -130,44 +130,44 @@ export const LABEL_COLOR_MAP: Record<
   { badge: string; dot: string }
 > = {
   neutral: {
-    badge: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
-    dot: "bg-slate-400",
+    badge: "bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800/40 dark:text-stone-300 dark:border-stone-700",
+    dot: "bg-stone-400",
   },
   rose: {
-    badge: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900",
-    dot: "bg-rose-500",
+    badge: "bg-rose-50 text-rose-600 border-rose-200/50 dark:bg-rose-950/20 dark:text-rose-300/70 dark:border-rose-900/40",
+    dot: "bg-rose-300",
   },
   orange: {
-    badge: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-900",
-    dot: "bg-orange-500",
+    badge: "bg-orange-50 text-orange-600 border-orange-200/50 dark:bg-orange-950/20 dark:text-orange-300/70 dark:border-orange-900/40",
+    dot: "bg-orange-300",
   },
   amber: {
-    badge: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900",
-    dot: "bg-amber-500",
+    badge: "bg-amber-50 text-amber-600 border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-300/70 dark:border-amber-900/40",
+    dot: "bg-amber-300",
   },
   emerald: {
-    badge: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-900",
-    dot: "bg-emerald-500",
+    badge: "bg-emerald-50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-300/70 dark:border-emerald-900/40",
+    dot: "bg-emerald-300",
   },
   teal: {
-    badge: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-900",
-    dot: "bg-teal-500",
+    badge: "bg-teal-50 text-teal-600 border-teal-200/50 dark:bg-teal-950/20 dark:text-teal-300/70 dark:border-teal-900/40",
+    dot: "bg-teal-300",
   },
   cyan: {
-    badge: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-900",
-    dot: "bg-cyan-500",
+    badge: "bg-cyan-50 text-cyan-600 border-cyan-200/50 dark:bg-cyan-950/20 dark:text-cyan-300/70 dark:border-cyan-900/40",
+    dot: "bg-cyan-300",
   },
   violet: {
-    badge: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-900",
-    dot: "bg-violet-500",
+    badge: "bg-violet-50 text-violet-600 border-violet-200/50 dark:bg-violet-950/20 dark:text-violet-300/70 dark:border-violet-900/40",
+    dot: "bg-violet-300",
   },
   fuchsia: {
-    badge: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:border-fuchsia-900",
-    dot: "bg-fuchsia-500",
+    badge: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200/50 dark:bg-fuchsia-950/20 dark:text-fuchsia-300/70 dark:border-fuchsia-900/40",
+    dot: "bg-fuchsia-300",
   },
   slate: {
-    badge: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
-    dot: "bg-slate-500",
+    badge: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700",
+    dot: "bg-slate-400",
   },
 }
 

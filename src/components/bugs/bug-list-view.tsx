@@ -430,10 +430,10 @@ export function BugListView() {
                     <DropdownMenuLabel>Set status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => applyBulk({ type: "status", value: "open" })}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mr-2" /> Open
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400 mr-2" /> Open
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => applyBulk({ type: "status", value: "closed" })}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-2" /> Closed
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400 mr-2" /> Closed
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

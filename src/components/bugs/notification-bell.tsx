@@ -30,11 +30,11 @@ const NOTIF_META: Record<
   AppNotification["type"],
   { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }
 > = {
-  bug_created: { icon: Plus, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500" },
-  bug_updated: { icon: Pencil, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500" },
-  bug_closed: { icon: CheckCheck, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500" },
-  comment_added: { icon: MessageSquare, color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500" },
-  bulk_action: { icon: Tags, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500" },
+  bug_created: { icon: Plus, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-400" },
+  bug_updated: { icon: Pencil, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-500" },
+  bug_closed: { icon: CheckCheck, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-400" },
+  comment_added: { icon: MessageSquare, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-500" },
+  bulk_action: { icon: Tags, color: "text-stone-500 dark:text-stone-400", bg: "bg-stone-400" },
 }
 
 export function NotificationBell() {
@@ -72,7 +72,7 @@ export function NotificationBell() {
         >
           <Bell className="h-4.5 w-4.5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-bold tabular-nums pulse-dot">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-400 text-white text-[9px] font-bold tabular-nums pulse-dot">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -140,7 +140,7 @@ export function NotificationBell() {
                   >
                     {/* Unread indicator */}
                     {!notif.read && (
-                      <span className="absolute left-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-rose-500 pulse-dot" />
+                      <span className="absolute left-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-red-400 pulse-dot" />
                     )}
                     <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0 ml-1", meta.bg + "/10")}>
                       <Icon className={cn("h-3.5 w-3.5", meta.color)} />
