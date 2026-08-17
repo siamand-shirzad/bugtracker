@@ -1682,3 +1682,74 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 The Settings page (with theme, defaults, notification prefs, data info), collapse-all/expand-all,
 and the `g s` keyboard shortcut are all functional.
+
+---
+
+# Round 12 — Minimal & Modern Claude-Inspired Redesign (Task ID: 12)
+
+## Current status assessment
+
+The project was stable (all routes 200, no console errors, lint clean). The user
+requested a bug fix + a minimal and modern redesign inspired by Claude's interface.
+
+## Goals
+
+1. **Fix any bugs** — verified all views, no code bugs found
+2. **Redesign CSS** — warm minimal Claude-inspired palette
+3. **Redesign sidebar** — clean, minimal nav
+4. **Redesign footer** — simple, uncluttered
+
+## Completed modifications
+
+### `src/app/globals.css` — Complete palette overhaul
+- **Warm off-white background** (`oklch(0.985 0.005 75)`) instead of cold pure white
+- **Warm dark foreground** (`oklch(0.28 0.01 75)`) instead of near-black
+- **Coral accent** (`oklch(0.62 0.15 35)`) — Claude's signature warm orange
+- **Larger radius** (0.75rem) for softer, rounder UI
+- **Very subtle borders** (`oklch(0.92 0.005 75)`) — low contrast, warm
+- **Warm muted colors** — all grays have a slight warm tint (hue 75)
+- **Dark mode** — warm dark background (`oklch(0.17 0.008 75)`) not cold blue-black
+- Simplified scrollbar (6px, thinner)
+- Removed excessive decorations (card-hover, stagger-item, etc.)
+
+### `src/components/bugs/app-sidebar.tsx` — Minimal sidebar
+- Removed `APP_VERSION` from brand area
+- Simplified command trigger button (smaller, more subtle)
+- Removed "Workspace" section header
+- Removed selected-bug indicator panel
+- Simplified nav items (no active indicator dot/bar)
+- Cleaner footer with notification bell + theme toggle
+- Removed "Light mode"/"Dark mode" text labels — icon-only
+- Simpler collapse button
+
+### `src/components/bugs/app-footer.tsx` — Minimal footer
+- Removed theme indicator, ⌘K hint, app icon
+- Simple: app name + version on left, open/closed/critical on right
+- No decorative elements
+
+## Verification results
+
+| Flow | Result |
+|------|--------|
+| Dashboard renders with warm palette | ✅ |
+| Bug list (10 rows) with warm tones | ✅ |
+| Bug detail renders correctly | ✅ |
+| Labels page works | ✅ |
+| Endpoints page works | ✅ |
+| Settings page works | ✅ |
+| Dark mode toggle (html class → "dark") | ✅ |
+| Command palette (⌘K) opens with all options | ✅ |
+| `n` shortcut opens new bug form | ✅ |
+| `g s` shortcut navigates to Settings | ✅ |
+| All sidebar nav items work | ✅ |
+| ESLint | ✅ 0 errors |
+| TypeScript | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## Files modified
+
+```
+src/app/globals.css                              ← Complete warm minimal palette
+src/components/bugs/app-sidebar.tsx              ← Minimal sidebar redesign
+src/components/bugs/app-footer.tsx               ← Minimal footer
+```
