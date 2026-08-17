@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Bug {
+  id                     String   @id @default(cuid())
+  jiraId                 String?
+  summary                String
+  overviewLoginCondition String?
+  overviewPlatform       String?
+  overviewModule         String?
+  overviewTrigger        String?
+  overviewIssue          String?
+  envPage                String?
+  envPlatform            String?
+  envOS                  String?
+  envBrowser             String?
+  preconditions          String? // JSON string array
+  stepsToReproduce       String? // JSON string array
+  actualResult           String?
+  expectedResult         String?
+  userImpact             String?
+  businessImpact         String?
+  qaImpact               String?
+  technicalNotes         String?
+  environmentStage       String   @default("dev") // dev | staging | production
+  status                 String   @default("open") // open | closed
+  priority               String   @default("medium") // low | medium | high | critical
+  assignee               String?
+  reporter               String   @default("Anonymous")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  labels BugLabel[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([environmentStage])
+  @@index([updatedAt])
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("neutral")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bugs BugLabel[]
+}
+
+model BugLabel {
+  bugId   String
+  labelId String
+  bug     Bug   @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([bugId, labelId])
+  @@index([labelId])
+}
