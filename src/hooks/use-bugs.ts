@@ -4,11 +4,13 @@ import {
   useQuery,
   useMutation,
   useQueryClient,
+  useInfiniteQuery,
   keepPreviousData,
 } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type {
   Bug,
+  BugComment,
   BugEvent,
   BugFilters,
   BugInput,
@@ -393,18 +395,41 @@ export function useBugSearch(query: string, limit = 10) {
   })
 }
 
-// ---- Global activity feed (recent events across ALL bugs) ----
-export function useGlobalActivity(limit = 20) {
-  return useQuery<{ events: Array<{ id: string; bugId: string; type: string; summary: string; actor: string; createdAt: string; bugSummary: string; jiraId: string | null }> }>({
+// ---- Global activity feed (recent events across ALL bugs) with infinite scroll ----
+type ActivityEvent = {
+  id: string
+  bugId: string
+  type: string
+  summary: string
+  actor: string
+  createdAt: string
+  bugSummary: string
+  jiraId: string | null
+}
+
+type ActivityPage = {
+  events: ActivityEvent[]
+  hasMore: boolean
+  nextCursor: string | null
+}
+
+export function useGlobalActivity(limit = 15) {
+  return useInfiniteQuery<ActivityPage>({
     queryKey: [...bugKeys.all, "activity", limit],
-    queryFn: async () => {
-      const res = await fetch(`/api/bugs/activity?limit=${limit}`)
+    queryFn: async (ctx) => {
+      const params = new URLSearchParams({ limit: String(limit) })
+      const pageParam = ctx.pageParam as string | undefined
+      if (pageParam) params.set("before", pageParam)
+      const res = await fetch(`/api/bugs/activity?${params.toString()}`)
       if (!res.ok) {
         const e = await res.json().catch(() => ({}))
         throw new Error(e.error || "Failed to fetch activity")
       }
       return res.json()
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     staleTime: 15_000,
   })
 }
@@ -423,5 +448,89 @@ export function useRelatedBugs(bugId: string | null, limit = 5) {
     },
     enabled: Boolean(bugId),
     staleTime: 30_000,
+  })
+}
+
+// ---- Bug comments (discussion thread) ----
+export function useBugComments(bugId: string | null) {
+  return useQuery<{ data: BugComment[] }>({
+    queryKey: bugId ? [...bugKeys.detail(bugId), "comments"] : ["bugs", "comments", "none"],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/${bugId}/comments`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch comments")
+      }
+      return res.json()
+    },
+    enabled: Boolean(bugId),
+    staleTime: 10_000,
+  })
+}
+
+export function useCreateComment(bugId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { body: string; author?: string }) => {
+      const res = await fetch(`/api/bugs/${bugId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to add comment")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...bugKeys.detail(bugId), "comments"] })
+      toast.success("Comment added")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useDeleteComment(bugId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (commentId: string) => {
+      const res = await fetch(`/api/bugs/${bugId}/comments/${commentId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to delete comment")
+      }
+      return commentId
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...bugKeys.detail(bugId), "comments"] })
+      toast.success("Comment deleted")
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useUpdateComment(bugId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ commentId, body }: { commentId: string; body: string }) => {
+      const res = await fetch(`/api/bugs/${bugId}/comments/${commentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to update comment")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...bugKeys.detail(bugId), "comments"] })
+      toast.success("Comment updated")
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }

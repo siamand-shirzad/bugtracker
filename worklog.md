@@ -623,3 +623,181 @@ The dev server is running, the database has 12 bugs (4 open, 8 closed) + 10 labe
 + ~24 events (12 created + 8 status_changed + 4 from QA), all with realistic
 timestamps spread over the last 25 days. The trend chart, global activity feed,
 and platform breakdown are all populated with real data.
+
+---
+
+# Round 4 — Comments, Search, Sharing, Pagination & Polish (Task ID: 4)
+
+## Current status assessment (start of round)
+
+Round 3 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled the top 5 (case-insensitive search, share button, date-range
+picker, activity pagination, comments) plus deep-link support.
+
+## Goals for this round
+
+1. **Case-insensitive search** — SQLite LOWER() workaround for search API + list filter
+2. **Bug detail "Share" button** — copy deep link + deep-link `?bug=ID` URL support
+3. **Dashboard date-range picker** — 7/14/30/90 days for the trend chart
+4. **Activity feed "Load more"** — cursor-based infinite pagination
+5. **Comment thread / discussion** — new BugComment model + CRUD API + UI with avatars
+6. **Styling polish** — comment avatars, range selector, deep-link cleanup
+
+## Completed modifications
+
+### New Prisma model
+- **`BugComment`** — `id`, `bugId`, `author`, `body`, `createdAt`, `updatedAt`.
+  Cascade-deletes with the parent bug. Index on `[bugId, createdAt]`. Added
+  `comments BugComment[]` relation to `Bug`.
+
+### New API routes (3)
+- **`GET /api/bugs/[id]/comments`** — list all comments for a bug (ascending by date).
+- **`POST /api/bugs/[id]/comments`** — create a comment (author optional, defaults to "Anonymous"; body 1–4000 chars).
+- **`PUT/DELETE /api/bugs/[id]/comments/[commentId]`** — edit or delete a comment
+  (validates that the comment belongs to the bug).
+
+### Enhanced API routes
+- **`GET /api/bugs/search`** — rewritten with raw SQL `LOWER() LIKE` for true
+  case-insensitive search across 10 text fields. Hydrates labels separately.
+- **`GET /api/bugs`** (list) — search/platform/assignee filters now use raw SQL
+  `LOWER()` to find matching IDs, then intersect with the Prisma `where` clause
+  via `id: { in: [...] }`. Falls back to `["__none__"]` for no matches.
+- **`GET /api/bugs/activity`** — added cursor-based pagination via `?before=<ISO date>`.
+  Returns `{ events, hasMore, nextCursor }`. Fetches `limit+1` rows to detect next page.
+
+### New hooks (`src/hooks/use-bugs.ts` appended)
+- `useBugComments(bugId)` — fetches the comment thread.
+- `useCreateComment(bugId)` — posts a new comment, invalidates the thread.
+- `useDeleteComment(bugId)` — deletes a comment by ID.
+- `useUpdateComment(bugId)` — edits a comment's body.
+- `useGlobalActivity` — upgraded from `useQuery` to `useInfiniteQuery` with
+  cursor-based `getNextPageParam`.
+
+### New UI components (`src/components/bugs/`)
+- **`comments-section.tsx`** — full discussion thread:
+  - Comment list with colored avatar circles (deterministic color from author name hash),
+    initials, relative timestamps, "(edited)" indicator.
+  - New-comment form: optional author input + body textarea + "Comment" button.
+  - `⌘+Enter` keyboard shortcut to submit.
+  - Inline edit mode (Edit button on hover) with Save/Cancel.
+  - Delete with AlertDialog confirmation.
+  - Loading skeletons + empty state.
+  - `no-print` class so comments don't appear in printed output.
+- **`GlobalActivityFeed`** (enhanced) — now uses `useInfiniteQuery`, flattens pages,
+  de-duplicates by event ID, and shows a "Load older events" button at the bottom
+  with a loading spinner during fetch.
+
+### Enhanced components
+- **`bug-detail-view.tsx`**:
+  - Added a **Share** button in the header — uses `navigator.share()` if available
+    (mobile), otherwise copies `?bug=<id>` URL to clipboard with a toast.
+  - Added the `CommentsSection` card at the bottom of the main content column
+    (after Technical Notes).
+  - Added `Share2` icon import + `handleShare` handler.
+- **`dashboard-view.tsx`**:
+  - Added a **date-range picker** (7d / 14d / 30d / 90d toggle buttons) in the
+    Activity Trend card header.
+  - `useBugTrend(trendDays)` now takes the selected range.
+  - Description updates dynamically ("last 30 days" etc.).
+- **`app-content.tsx`**:
+  - Added **deep-link support**: on mount, reads `?bug=ID` from the URL, navigates
+    to the bug detail, then cleans the URL via `history.replaceState` so a refresh
+    doesn't re-trigger.
+
+### Styling polish
+- Comment avatars: 8-color palette, deterministic from author name, white initials.
+- Date-range selector: segmented button group with active state.
+- "Load older events" button: ghost style with ChevronDown icon + spinner.
+- Deep-link URL cleanup (no query param pollution after navigation).
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Case-insensitive search: "AUTH" = "auth" (both return 3 results) | ✅ |
+| List filter "DARK" finds dark mode bug | ✅ |
+| Dashboard date-range: click "30d" → "last 30 days" + chart updates | ✅ |
+| Bug detail: Share button → "Bug link copied to clipboard" toast | ✅ |
+| Deep link `/?bug=<id>` → opens bug detail directly, URL cleaned | ✅ |
+| Bug detail: Discussion section renders with "No comments yet" empty state | ✅ |
+| Add comment → posts via API → appears in thread with "Anonymous" avatar | ✅ |
+| Comment textarea + "⌘+Enter to send" hint + disabled button when empty | ✅ |
+| Activity feed: "Load older events" button loads more events | ✅ |
+| Print button + Share button present in header | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+| All 7 API endpoints smoke-tested | ✅ all 200 |
+
+### Bugs fixed during QA
+1. **Dashboard JSX parse error** — extra `</div>` in the trend chart header after
+   adding the date-range selector. Fixed the div nesting.
+2. **`mode: "insensitive"` not supported on SQLite** — Prisma 6 rejects this for
+   SQLite. Rewrote both search routes to use raw SQL `LOWER() LIKE` with `$queryRaw`.
+3. **`useInfiniteQuery` pageParam typing** — the `QueryFunctionContext`'s
+   `pageParam` is `unknown`, not `string`. Fixed by casting `ctx.pageParam as string | undefined`.
+4. **`setView`/`selectBug` not in scope** in the deep-link effect. Fixed by
+   reading from `useBugStore.getState()` inside the effect instead of the closure.
+
+## New file map (additions in this round)
+
+```
+prisma/schema.prisma                              ← + BugComment model + Bug.comments relation
+src/app/api/bugs/[id]/comments/route.ts          ← GET + POST comments
+src/app/api/bugs/[id]/comments/[commentId]/route.ts ← PUT + DELETE comment
+src/app/api/bugs/search/route.ts                 ← rewritten: raw SQL LOWER() case-insensitive
+src/app/api/bugs/route.ts                        ← search/platform/assignee now case-insensitive
+src/app/api/bugs/activity/route.ts               ← + cursor-based pagination
+src/hooks/use-bugs.ts                            ← + useBugComments, useCreateComment, useDeleteComment, useUpdateComment; useGlobalActivity → useInfiniteQuery
+src/lib/types.ts                                 ← + BugComment interface
+src/components/bugs/comments-section.tsx         ← discussion thread with avatars + edit/delete
+src/components/bugs/global-activity-feed.tsx     ← + infinite scroll + Load more button
+src/components/bugs/bug-detail-view.tsx          ← + Share button + CommentsSection
+src/components/bugs/dashboard-view.tsx          ← + date-range picker (7/14/30/90d)
+src/components/bugs/app-content.tsx             ← + deep-link ?bug=ID support
+```
+
+## Unresolved issues / risks
+
+1. **Drag-and-drop labels** (Phase U) — deferred to next round. dnd-kit is installed
+   but the DnD interaction needs careful design (drop zones on rows, visual feedback).
+2. **In-app notification bell** (Phase V) — deferred. The existing toast system
+   already covers bulk-action feedback; a bell would add value for background events
+   (e.g. new comments on watched bugs) but requires a subscription/polling mechanism.
+3. **Comment author identity** — currently a free-text input. No real auth yet,
+   so anyone can post as anyone. Would need NextAuth + User model.
+4. **Comment markdown rendering** — the placeholder mentions "markdown supported"
+   but the body is rendered as plain `whitespace-pre-wrap` text. react-markdown
+   is installed; could wire it in for the next round.
+5. **Search performance** — the raw SQL `LOWER() LIKE` scans all rows. For large
+   datasets, an FTS5 virtual table or Postgres `tsvector` would be much faster.
+6. **Activity feed deduplication** — handled client-side via a Set. If the same
+   event appears in two pages (edge case at the cursor boundary), it's filtered.
+
+## Priority recommendations for the next phase
+
+1. **Markdown rendering** for comment bodies (react-markdown is installed).
+2. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+3. **In-app notification bell** with unread count for new comments/events.
+4. **User model + NextAuth** — real identities for comment authors + assignees.
+5. **CSV import with PapaParse** — robust multi-line cell handling.
+6. **Saved filters as DB entities** — sync across devices (requires auth).
+7. **Bug detail "copy as Markdown"** — export the whole bug as a markdown doc.
+8. **Dashboard widgets** — SLA / resolution-time chart, assignee workload chart.
+9. **WebSocket mini-service** for real-time comment + event push.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run db:push                  # apply schema (BugComment model added)
+bun run db:generate              # regenerate Prisma Client (REQUIRED after schema change)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 1 test
+comment, all with realistic timestamps. Case-insensitive search, comments, deep-linking,
+date-range picker, and activity pagination are all functional.

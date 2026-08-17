@@ -22,6 +22,7 @@ import {
   Monitor,
   Pencil,
   Printer,
+  Share2,
   ShieldAlert,
   Smartphone,
   Terminal,
@@ -57,6 +58,7 @@ import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
 import { LabelBadge } from "@/components/bugs/label-badge"
 import { ActivityTimeline } from "@/components/bugs/activity-timeline"
+import { CommentsSection } from "@/components/bugs/comments-section"
 import { RelatedBugsCard } from "@/components/bugs/related-bugs-card"
 import { useBug, useBugEvents, useDeleteBug, useUpdateBug } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
@@ -100,6 +102,25 @@ export function BugDetailView() {
     const text = reconstructTemplate(bug)
     navigator.clipboard?.writeText(text)
     toast.success("Template copied to clipboard")
+  }
+
+  const handleShare = async () => {
+    if (!bug) return
+    const url = `${window.location.origin}/?bug=${bug.id}`
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: bug.summary,
+          text: `${bug.jiraId ? bug.jiraId + " — " : ""}${bug.summary}`,
+          url,
+        })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast.success("Bug link copied to clipboard")
+      }
+    } catch {
+      // user cancelled share — no toast
+    }
   }
 
   if (!bugId) {
@@ -159,6 +180,10 @@ export function BugDetailView() {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0 no-print">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleShare}>
+            <Share2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Share</span>
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopyTemplate}>
             <ClipboardCopy className="h-4 w-4" />
             <span className="hidden sm:inline">Copy template</span>
@@ -374,6 +399,9 @@ export function BugDetailView() {
               )}
             </CardContent>
           </Card>
+
+          {/* Discussion / comments */}
+          <CommentsSection bugId={bug.id} />
         </div>
 
         {/* Sidebar */}

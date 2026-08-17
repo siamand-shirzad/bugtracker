@@ -36,15 +36,24 @@ export async function GET(req: NextRequest) {
     } = { AND: [] };
 
     if (q.search) {
-      where.AND.push({
-        OR: [
-          { summary: { contains: q.search } },
-          { jiraId: { contains: q.search } },
-          { actualResult: { contains: q.search } },
-          { expectedResult: { contains: q.search } },
-          { technicalNotes: { contains: q.search } },
-        ],
-      });
+      // SQLite doesn't support `mode: "insensitive"` in Prisma. Use raw SQL
+      // with LOWER() to find matching IDs, then constrain the Prisma query to
+      // those IDs.
+      const pattern = `%${q.search.toLowerCase()}%`;
+      const matchingRows = (await db.$queryRaw`
+        SELECT id FROM Bug
+        WHERE
+          LOWER(summary) LIKE ${pattern}
+          OR LOWER(COALESCE(jiraId, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(actualResult, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(expectedResult, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(technicalNotes, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(envPlatform, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(envPage, '')) LIKE ${pattern}
+          OR LOWER(COALESCE(overviewModule, '')) LIKE ${pattern}
+      `) as { id: string }[];
+      const matchingIds = matchingRows.map((r) => r.id);
+      where.AND.push({ id: { in: matchingIds.length > 0 ? matchingIds : ["__none__"] } });
     }
     if (q.status && q.status !== "all") {
       where.AND.push({ status: q.status });
@@ -56,10 +65,21 @@ export async function GET(req: NextRequest) {
       where.AND.push({ environmentStage: q.stage });
     }
     if (q.platform && q.platform !== "all") {
-      where.AND.push({ envPlatform: { contains: q.platform } });
+      // Case-insensitive platform filter via raw SQL ID lookup
+      const platPattern = `%${q.platform.toLowerCase()}%`;
+      const platRows = (await db.$queryRaw`
+        SELECT id FROM Bug WHERE LOWER(COALESCE(envPlatform, '')) LIKE ${platPattern}
+      `) as { id: string }[];
+      const platIds = platRows.map((r) => r.id);
+      where.AND.push({ id: { in: platIds.length > 0 ? platIds : ["__none__"] } });
     }
     if (q.assignee) {
-      where.AND.push({ assignee: { contains: q.assignee } });
+      const assigneePattern = `%${q.assignee.toLowerCase()}%`;
+      const assigneeRows = (await db.$queryRaw`
+        SELECT id FROM Bug WHERE LOWER(COALESCE(assignee, '')) LIKE ${assigneePattern}
+      `) as { id: string }[];
+      const assigneeIds = assigneeRows.map((r) => r.id);
+      where.AND.push({ id: { in: assigneeIds.length > 0 ? assigneeIds : ["__none__"] } });
     }
     if (q.labelId) {
       where.AND.push({ labels: { some: { labelId: q.labelId } } });

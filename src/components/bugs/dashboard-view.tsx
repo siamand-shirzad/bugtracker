@@ -51,7 +51,8 @@ import { cn } from "@/lib/utils"
 
 export function DashboardView() {
   const { data: stats, isLoading } = useBugStats()
-  const { data: trend, isLoading: trendLoading } = useBugTrend(14)
+  const [trendDays, setTrendDays] = React.useState(14)
+  const { data: trend, isLoading: trendLoading } = useBugTrend(trendDays)
   const setView = useBugStore((s) => s.setView)
   const selectBug = useBugStore((s) => s.selectBug)
   const openCreateForm = useBugStore((s) => s.openCreateForm)
@@ -113,33 +114,54 @@ export function DashboardView() {
         />
       </div>
 
-      {/* Trend chart (opened vs closed over 14 days) */}
+      {/* Trend chart (opened vs closed) */}
       <Card className="overflow-hidden">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 Activity Trend
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                Bugs opened vs closed — last 14 days
+                Bugs opened vs closed — last {trendDays} days
               </CardDescription>
             </div>
-            {trend && (
-              <div className="flex items-center gap-3 text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm bg-rose-500" />
-                  <span className="text-muted-foreground">Opened</span>
-                  <span className="font-semibold tabular-nums">{trend.totalOpened}</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              {trend && (
+                <div className="flex items-center gap-3 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-sm bg-rose-500" />
+                    <span className="text-muted-foreground">Opened</span>
+                    <span className="font-semibold tabular-nums">{trend.totalOpened}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+                    <span className="text-muted-foreground">Closed</span>
+                    <span className="font-semibold tabular-nums">{trend.totalClosed}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-sm bg-emerald-500" />
-                  <span className="text-muted-foreground">Closed</span>
-                  <span className="font-semibold tabular-nums">{trend.totalClosed}</span>
-                </div>
+              )}
+              {/* Date range selector */}
+              <div className="inline-flex rounded-md border overflow-hidden">
+                {([7, 14, 30, 90] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setTrendDays(d)}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-medium transition-colors",
+                      d !== 7 && "border-l",
+                      trendDays === d
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-accent text-muted-foreground",
+                    )}
+                  >
+                    {d}d
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-2">

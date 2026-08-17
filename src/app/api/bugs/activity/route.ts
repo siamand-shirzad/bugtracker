@@ -8,11 +8,13 @@ export async function GET(req: NextRequest) {
       parseInt(url.searchParams.get("limit") || "20", 10),
       100,
     );
+    // Cursor-based pagination: pass `before=<ISO date>` to fetch events older than that
+    const before = url.searchParams.get("before");
 
-    // Fetch recent events across ALL bugs, joined with the bug summary + jiraId
     const rows = await db.bugEvent.findMany({
       orderBy: { createdAt: "desc" },
-      take: limit,
+      take: limit + 1, // fetch one extra to know if there's a next page
+      ...(before ? { where: { createdAt: { lt: new Date(before) } } } : {}),
       include: {
         bug: {
           select: { summary: true, jiraId: true },
@@ -20,7 +22,14 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const events = rows.map((r) => ({
+    const hasMore = rows.length > limit;
+    const slice = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor =
+      hasMore && slice.length > 0
+        ? slice[slice.length - 1].createdAt.toISOString()
+        : null;
+
+    const events = slice.map((r) => ({
       id: r.id,
       bugId: r.bugId,
       type: r.type,
@@ -31,7 +40,7 @@ export async function GET(req: NextRequest) {
       jiraId: r.bug.jiraId,
     }));
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ events, hasMore, nextCursor });
   } catch (err) {
     console.error("[GET /api/bugs/activity] error:", err);
     return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });

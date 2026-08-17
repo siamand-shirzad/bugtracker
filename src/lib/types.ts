@@ -151,6 +151,16 @@ export interface EnvVarInfo {
   required: boolean
 }
 
+// ---- Bug comments (discussion thread) ----
+export interface BugComment {
+  id: string
+  bugId: string
+  author: string
+  body: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ---- Bug activity events (audit trail) ----
 export type BugEventType =
   | "created"

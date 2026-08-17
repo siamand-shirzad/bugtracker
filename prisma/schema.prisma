@@ -41,6 +41,7 @@ model Bug {
 
   labels BugLabel[]
   events BugEvent[]
+  comments BugComment[]
 
   @@index([status])
   @@index([priority])
@@ -82,4 +83,16 @@ model BugEvent {
 
   @@index([bugId, createdAt])
   @@index([createdAt])
+}
+
+model BugComment {
+  id        String   @id @default(cuid())
+  bugId     String
+  bug       Bug      @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  author    String   @default("Anonymous")
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bugId, createdAt])
 }

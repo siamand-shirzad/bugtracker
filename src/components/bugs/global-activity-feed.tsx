@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   AlertCircle,
+  ChevronDown,
   CircleDot,
   GitBranch,
   History,
@@ -16,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useGlobalActivity } from "@/hooks/use-bugs"
@@ -44,10 +46,33 @@ const EVENT_META: Record<
 }
 
 export function GlobalActivityFeed({ limit = 15 }: GlobalActivityFeedProps) {
-  const { data, isLoading, isFetching } = useGlobalActivity(limit)
+  const { data, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } = useGlobalActivity(limit)
   const setView = useBugStore((s) => s.setView)
   const selectBug = useBugStore((s) => s.selectBug)
-  const events = data?.events ?? []
+
+  // Flatten infinite query pages into a single events array
+  const events = React.useMemo(() => {
+    const all: Array<{
+      id: string
+      bugId: string
+      type: string
+      summary: string
+      actor: string
+      createdAt: string
+      bugSummary: string
+      jiraId: string | null
+    }> = []
+    for (const page of data?.pages ?? []) {
+      all.push(...page.events)
+    }
+    // De-duplicate by id (in case of overlap)
+    const seen = new Set<string>()
+    return all.filter((e) => {
+      if (seen.has(e.id)) return false
+      seen.add(e.id)
+      return true
+    })
+  }, [data])
 
   const handleClick = (bugId: string) => {
     selectBug(bugId)
@@ -67,7 +92,7 @@ export function GlobalActivityFeed({ limit = 15 }: GlobalActivityFeedProps) {
               Most recent changes across all bug reports
             </CardDescription>
           </div>
-          {isFetching && !isLoading && (
+          {isFetching && !isLoading && !isFetchingNextPage && (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           )}
         </div>
@@ -141,6 +166,25 @@ export function GlobalActivityFeed({ limit = 15 }: GlobalActivityFeedProps) {
                 )
               })}
             </ol>
+            {/* Load more button */}
+            {hasNextPage && (
+              <div className="pt-2 flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5 w-full"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                  Load older events
+                </Button>
+              </div>
+            )}
           </ScrollArea>
         )}
       </CardContent>

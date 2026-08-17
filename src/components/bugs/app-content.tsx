@@ -46,6 +46,22 @@ export function AppContent() {
     return () => window.removeEventListener("ib4g:open-command-palette", handler)
   }, [])
 
+  // Deep-link support: read ?bug=ID on mount and navigate to the bug detail
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const bugId = params.get("bug")
+    if (bugId) {
+      const { setView, selectBug } = useBugStore.getState()
+      setView("bugs")
+      selectBug(bugId)
+      // Clean the URL so a refresh doesn't re-trigger
+      const url = new URL(window.location.href)
+      url.searchParams.delete("bug")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [])
+
   // Keep labels cache in sync (so badges elsewhere can use it)
   const { data: labels = [] } = useLabels()
   const setLabelsCache = useBugStore((s) => s.setLabelsCache)
