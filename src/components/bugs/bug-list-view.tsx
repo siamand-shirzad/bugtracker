@@ -76,6 +76,7 @@ import {
   useBulkAction,
   useExportBugs,
   useImportBugs,
+  useAssignees,
 } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
 import { useSavedFilters } from "@/hooks/use-saved-filters"
@@ -127,11 +128,14 @@ export function BugListView() {
   const setPriority = useBugStore((s) => s.setPriority)
   const setPlatform = useBugStore((s) => s.setPlatform)
   const setStage = useBugStore((s) => s.setStage)
+  const setAssignee = useBugStore((s) => s.setAssignee)
   const setPage = useBugStore((s) => s.setPage)
   const resetFilters = useBugStore((s) => s.resetFilters)
   const selectBug = useBugStore((s) => s.selectBug)
   const openCreateForm = useBugStore((s) => s.openCreateForm)
   const { data: labels = [] } = useLabels()
+  const { data: assigneesData } = useAssignees()
+  const assignees = assigneesData?.assignees ?? []
   const bulkMut = useBulkAction()
   const exportMut = useExportBugs()
   const importMut = useImportBugs()
@@ -212,7 +216,8 @@ export function BugListView() {
     filters.status !== "all" ||
     filters.priority !== "all" ||
     filters.platform !== "all" ||
-    filters.stage !== "all"
+    filters.stage !== "all" ||
+    Boolean(filters.assignee)
 
   // ---- Export dropdown ----
   const handleExport = (format: "csv" | "json") => {
@@ -506,7 +511,7 @@ export function BugListView() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
                 <Select value={filters.status ?? "all"} onValueChange={(v) => setStatus(v as BugStatus | "all")}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Status" />
@@ -551,6 +556,23 @@ export function BugListView() {
                     {PLATFORM_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value} className="text-xs">
                         {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={filters.assignee ?? "all"}
+                  onValueChange={(v) => setAssignee(v)}
+                >
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">All assignees</SelectItem>
+                    <SelectItem value="__unassigned__" className="text-xs italic">Unassigned</SelectItem>
+                    {assignees.map((a) => (
+                      <SelectItem key={a.name} value={a.name} className="text-xs">
+                        {a.name} ({a.total})
                       </SelectItem>
                     ))}
                   </SelectContent>

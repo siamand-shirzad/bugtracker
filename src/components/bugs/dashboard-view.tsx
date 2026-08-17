@@ -882,10 +882,35 @@ const PRIORITY_HEAT: Record<string, string> = {
 function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
   const matrix = stats?.priorityStageMatrix ?? []
   const maxCount = Math.max(1, ...matrix.map((m) => m.count))
+  const setView = useBugStore((s) => s.setView)
+  const setPriority = useBugStore((s) => s.setPriority)
+  const setStage = useBugStore((s) => s.setStage)
+  const setPage = useBugStore((s) => s.setPage)
 
   const getCell = (priority: string, stage: string) => {
     const cell = matrix.find((m) => m.priority === priority && m.stage === stage)
     return cell?.count ?? 0
+  }
+
+  const goToFiltered = (priority: string, stage: string) => {
+    setPriority(priority as BugPriority)
+    setStage(stage as EnvironmentStage)
+    setPage(1)
+    setView("bugs")
+  }
+
+  const goToRow = (priority: string) => {
+    setPriority(priority as BugPriority)
+    setStage("all")
+    setPage(1)
+    setView("bugs")
+  }
+
+  const goToCol = (stage: string) => {
+    setPriority("all")
+    setStage(stage as EnvironmentStage)
+    setPage(1)
+    setView("bugs")
   }
 
   const rowTotal = (priority: string) =>
@@ -923,10 +948,14 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
                   </th>
                   {HEATMAP_STAGES.map((s) => (
                     <th key={s} className="p-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => goToCol(s)}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                        title={`Filter by ${STAGE_CONFIG[s].label} stage`}
+                      >
                         <span>{STAGE_CONFIG[s].icon}</span>
                         {STAGE_CONFIG[s].label}
-                      </span>
+                      </button>
                     </th>
                   ))}
                   <th className="p-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-l">
@@ -940,10 +969,14 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
                   return (
                     <tr key={p} className="group">
                       <td className="p-2 text-xs font-medium sticky left-0 bg-background">
-                        <span className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() => goToRow(p)}
+                          className="inline-flex items-center gap-1.5 hover:text-primary transition-colors"
+                          title={`Filter by ${p} priority`}
+                        >
                           <span className={cn("h-2 w-2 rounded-full", PRIORITY_CONFIG[p].dot)} />
                           <span className="capitalize">{p}</span>
-                        </span>
+                        </button>
                       </td>
                       {HEATMAP_STAGES.map((s) => {
                         const count = getCell(p, s)
@@ -951,12 +984,14 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
                         const heatColor = PRIORITY_HEAT[p]
                         return (
                           <td key={s} className="p-1.5 text-center">
-                            <div
+                            <button
+                              onClick={() => count > 0 && goToFiltered(p, s)}
+                              disabled={count === 0}
                               className={cn(
-                                "h-10 rounded-md flex items-center justify-center font-semibold tabular-nums transition-all hover:scale-105 cursor-default",
+                                "h-10 w-full rounded-md flex items-center justify-center font-semibold tabular-nums transition-all",
                                 count === 0
-                                  ? "bg-muted/30 text-muted-foreground/40"
-                                  : "text-white hover:shadow-md",
+                                  ? "bg-muted/30 text-muted-foreground/40 cursor-default"
+                                  : "text-white hover:scale-105 hover:shadow-md cursor-pointer",
                               )}
                               style={
                                 count > 0
@@ -966,15 +1001,21 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
                                     }
                                   : undefined
                               }
-                              title={`${p} / ${s}: ${count} bug${count === 1 ? "" : "s"}`}
+                              title={count > 0 ? `View ${count} ${p} bug${count === 1 ? "" : "s"} in ${s}` : `No ${p} bugs in ${s}`}
                             >
                               {count > 0 ? count : "·"}
-                            </div>
+                            </button>
                           </td>
                         )
                       })}
-                      <td className="p-2 text-center font-bold tabular-nums border-l bg-muted/20">
-                        {rt}
+                      <td className="p-2 text-center border-l bg-muted/20">
+                        <button
+                          onClick={() => goToRow(p)}
+                          className="font-bold tabular-nums hover:text-primary transition-colors"
+                          title={`View all ${p} bugs`}
+                        >
+                          {rt}
+                        </button>
                       </td>
                     </tr>
                   )
@@ -986,12 +1027,29 @@ function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
                     Total
                   </td>
                   {HEATMAP_STAGES.map((s) => (
-                    <td key={s} className="p-2 text-center font-bold tabular-nums bg-muted/20">
-                      {colTotal(s)}
+                    <td key={s} className="p-2 text-center bg-muted/20">
+                      <button
+                        onClick={() => goToCol(s)}
+                        className="font-bold tabular-nums hover:text-primary transition-colors"
+                        title={`View all ${s} bugs`}
+                      >
+                        {colTotal(s)}
+                      </button>
                     </td>
                   ))}
-                  <td className="p-2 text-center font-bold tabular-nums border-l bg-primary/10 text-primary">
-                    {grandTotal}
+                  <td className="p-2 text-center border-l bg-primary/10">
+                    <button
+                      onClick={() => {
+                        setPriority("all")
+                        setStage("all")
+                        setPage(1)
+                        setView("bugs")
+                      }}
+                      className="font-bold tabular-nums text-primary hover:underline transition-colors"
+                      title="View all bugs"
+                    >
+                      {grandTotal}
+                    </button>
                   </td>
                 </tr>
               </tfoot>

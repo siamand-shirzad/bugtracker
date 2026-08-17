@@ -1092,3 +1092,142 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 GFM markdown, the notification bell (with persisted unread state), the priority heatmap,
 and the consolidated export dropdown are all functional.
+
+---
+
+# Round 7 — Clickable Heatmap, Assignee Filter, cURL Export & Polish (Task ID: 7)
+
+## Current status assessment (start of round)
+
+Round 6 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled clickable heatmap, auto-mark-read notifications, cURL
+export, assignee filter, and styling polish.
+
+## Goals for this round
+
+1. **Clickable heatmap cells** → navigate to filtered bug list (priority + stage)
+2. **Auto-mark notifications read** when panel opened >2.5s
+3. **Bug detail "Copy as cURL"** — export a curl command for API debugging
+4. **Assignee filter dropdown** — populated from real assignees with bug counts
+5. **Styling polish** — clickable labels/totals, hover states, 5-column filter grid
+
+## Completed modifications
+
+### New API route — `GET /api/bugs/assignees`
+- Returns all distinct non-null assignees with their bug counts:
+  `{ assignees: [{ name, total, open, closed }] }` sorted by total descending.
+- Used to populate the assignee filter dropdown.
+
+### Enhanced API — `GET /api/bugs` (list)
+- The `assignee` filter now handles the special value `__unassigned__` →
+  filters by `assignee: null`. Other values use case-insensitive `LOWER() LIKE`.
+
+### Enhanced store — `src/store/bug-store.ts`
+- Added `setAssignee(a: string | "all")` action. Sets `filters.assignee` to
+  `undefined` when "all", or the raw string otherwise. Resets page to 1.
+- Added `assignee` to the `hasActiveFilters` check in bug-list-view.
+
+### Enhanced `src/components/bugs/dashboard-view.tsx` — PriorityHeatmapCard
+- **Cells are now clickable buttons** — clicking a non-zero cell navigates to
+  the bug list filtered by that priority + stage.
+- **Row labels clickable** — clicking a priority label filters by that priority
+  only (stage = all).
+- **Column headers clickable** — clicking a stage header filters by that stage
+  only (priority = all).
+- **Footer totals clickable** — column totals filter by stage; grand total
+  clears all filters and shows all bugs.
+- Hover effects: cells scale 1.05, labels/headers change to `text-primary`.
+- Titles: "View N critical bugs in production" etc.
+
+### Enhanced `src/components/bugs/notification-bell.tsx`
+- **Auto-mark-read**: when the panel is opened and there are unread notifications,
+  a 2.5-second timer starts. After it fires, `markAllRead()` is called. The
+  timer is cleared on close or unmount.
+- The unread badge pulses while unread, then disappears.
+
+### Enhanced `src/components/bugs/bug-detail-view.tsx`
+- Added **"Copy as cURL"** to the Export dropdown menu.
+- `handleCopyCurl` generates a `curl -X GET '<origin>/api/bugs/<id>' -H 'Accept: application/json' | jq .`
+  command and copies it to the clipboard.
+- The Export dropdown now has 5 options: Markdown, JSON, cURL, IB4G template, Print.
+
+### Enhanced `src/components/bugs/bug-list-view.tsx`
+- Added a **5th filter dropdown** (Assignee) to the filter grid.
+- The grid is now `grid-cols-2 sm:grid-cols-4 lg:grid-cols-5`.
+- Options: "All assignees", "Unassigned" (italic), then each assignee with
+  their bug count (e.g. "Sara Chen (5)").
+- Uses the new `useAssignees()` hook.
+
+### New hook — `useAssignees()`
+- Fetches `/api/bugs/assignees`, 60s staleTime.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Heatmap cell click (critical/production=2) → navigates to bug list with priority=Critical, stage=Production, "2 reports tracked" | ✅ |
+| Heatmap row label click → filters by priority only | ✅ |
+| Heatmap column header click → filters by stage only | ✅ |
+| Heatmap grand total click → clears all filters, shows 12 reports | ✅ |
+| Assignee filter dropdown: shows "All assignees", "Unassigned", "Sara Chen (5)", "Marco Diaz (3)", "Priya Nair (2)" | ✅ |
+| Selecting Sara Chen → filters list to her bugs | ✅ |
+| Reset button → clears all filters back to 12 reports | ✅ |
+| Bug detail Export dropdown: 5 options (Markdown, JSON, cURL, Template, Print) | ✅ |
+| "Copy as cURL" executes without error | ✅ |
+| Notification bell auto-marks read after 2.5s | ✅ |
+| Assignees API returns 3 assignees with counts | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/app/api/bugs/assignees/route.ts              ← GET distinct assignees with counts
+src/app/api/bugs/route.ts                        ← + __unassigned__ handling
+src/store/bug-store.ts                            ← + setAssignee action
+src/hooks/use-bugs.ts                             ← + useAssignees hook
+src/components/bugs/dashboard-view.tsx            ← clickable heatmap cells/labels/totals
+src/components/bugs/notification-bell.tsx         ← + auto-mark-read after 2.5s
+src/components/bugs/bug-detail-view.tsx           ← + Copy as cURL in export menu
+src/components/bugs/bug-list-view.tsx             ← + 5th assignee filter dropdown
+```
+
+## Unresolved issues / risks
+
+1. **Assignee filter is case-insensitive substring match** — searching "Sara" matches
+   "Sara Chen" and "Sara Smith". Exact match would be more predictable but less flexible.
+2. **Heatmap navigation overwrites existing filters** — clicking a cell sets
+   priority+stage, clearing any search/platform/assignee filters the user had.
+   Could preserve those in a future iteration.
+3. **cURL command uses `| jq .`** — assumes `jq` is installed. Could offer a
+   plain version without the pipe.
+4. **Auto-mark-read is 2.5s** — might be too fast for some users. Could make
+   it configurable.
+
+## Priority recommendations for the next phase
+
+1. **Preserve filters on heatmap navigation** — only change priority/stage, keep
+   search/platform/assignee.
+2. **WebSocket mini-service** for real-time notification push.
+3. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+4. **User model + NextAuth** — real identities for comment authors + assignees.
+5. **Watch/subscribe to bugs** — get notified on changes (requires auth).
+6. **CSV import with PapaParse** — robust multi-line cell handling.
+7. **Dashboard "burn-down" chart** — open bugs over time.
+8. **Bug detail "Edit history"** — show all edits inline (not just events).
+9. **Keyboard shortcut to cycle assignees** — `[` / `]` to go prev/next assignee's bugs.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+Clickable heatmap navigation, auto-mark-read notifications, cURL export, and the
+assignee filter dropdown are all functional.

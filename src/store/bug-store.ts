@@ -35,6 +35,7 @@ interface BugStore {
   setPriority: (p: BugPriority | "all") => void
   setPlatform: (p: string | "all") => void
   setStage: (s: EnvironmentStage | "all") => void
+  setAssignee: (a: string | "all") => void
   setLabelId: (id: string | "all") => void
   setPage: (p: number) => void
   setPageSize: (n: number) => void
@@ -90,6 +91,8 @@ export const useBugStore = create<BugStore>((set) => ({
     set((s) => ({ filters: { ...s.filters, platform, page: 1 } })),
   setStage: (stage) =>
     set((s) => ({ filters: { ...s.filters, stage, page: 1 } })),
+  setAssignee: (assignee) =>
+    set((s) => ({ filters: { ...s.filters, assignee: assignee === "all" ? undefined : assignee, page: 1 } })),
   setLabelId: (labelId) =>
     set((s) => ({ filters: { ...s.filters, labelId, page: 1 } })),
   setPage: (page) => set((s) => ({ filters: { ...s.filters, page } })),

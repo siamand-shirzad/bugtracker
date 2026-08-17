@@ -157,6 +157,19 @@ export function BugDetailView() {
     }
   }
 
+  const handleCopyCurl = async () => {
+    if (!bug) return
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
+    const curl = `curl -X GET '${origin}/api/bugs/${bug.id}' \\
+  -H 'Accept: application/json' | jq .`
+    try {
+      await navigator.clipboard.writeText(curl)
+      toast.success("cURL command copied to clipboard")
+    } catch {
+      toast.error("Failed to copy cURL")
+    }
+  }
+
   if (!bugId) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
@@ -236,6 +249,10 @@ export function BugDetailView() {
               <DropdownMenuItem onClick={handleCopyJson}>
                 <ClipboardCopy className="h-3.5 w-3.5 mr-2" />
                 Copy as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyCurl}>
+                <Terminal className="h-3.5 w-3.5 mr-2" />
+                Copy as cURL
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyTemplate}>
                 <ClipboardCopy className="h-3.5 w-3.5 mr-2" />

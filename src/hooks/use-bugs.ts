@@ -562,3 +562,19 @@ export function useUpdateComment(bugId: string) {
     onError: (e: Error) => toast.error(e.message),
   })
 }
+
+// ---- Assignees list (for the filter dropdown) ----
+export function useAssignees() {
+  return useQuery<{ assignees: { name: string; total: number; open: number; closed: number }[] }>({
+    queryKey: [...bugKeys.all, "assignees"],
+    queryFn: async () => {
+      const res = await fetch("/api/bugs/assignees")
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch assignees")
+      }
+      return res.json()
+    },
+    staleTime: 60_000,
+  })
+}

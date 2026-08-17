@@ -44,6 +44,15 @@ export function NotificationBell() {
   const setView = useBugStore((s) => s.setView)
   const [open, setOpen] = React.useState(false)
 
+  // Auto-mark all as read after the panel is open for 2.5 seconds
+  React.useEffect(() => {
+    if (!open || unreadCount === 0) return
+    const t = setTimeout(() => {
+      markAllRead()
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [open, unreadCount, markAllRead])
+
   const handleClick = (notif: AppNotification) => {
     markRead(notif.id)
     if (notif.bugId) {

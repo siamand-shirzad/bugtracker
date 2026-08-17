@@ -74,12 +74,16 @@ export async function GET(req: NextRequest) {
       where.AND.push({ id: { in: platIds.length > 0 ? platIds : ["__none__"] } });
     }
     if (q.assignee) {
-      const assigneePattern = `%${q.assignee.toLowerCase()}%`;
-      const assigneeRows = (await db.$queryRaw`
-        SELECT id FROM Bug WHERE LOWER(COALESCE(assignee, '')) LIKE ${assigneePattern}
-      `) as { id: string }[];
-      const assigneeIds = assigneeRows.map((r) => r.id);
-      where.AND.push({ id: { in: assigneeIds.length > 0 ? assigneeIds : ["__none__"] } });
+      if (q.assignee === "__unassigned__") {
+        where.AND.push({ assignee: null });
+      } else {
+        const assigneePattern = `%${q.assignee.toLowerCase()}%`;
+        const assigneeRows = (await db.$queryRaw`
+          SELECT id FROM Bug WHERE LOWER(COALESCE(assignee, '')) LIKE ${assigneePattern}
+        `) as { id: string }[];
+        const assigneeIds = assigneeRows.map((r) => r.id);
+        where.AND.push({ id: { in: assigneeIds.length > 0 ? assigneeIds : ["__none__"] } });
+      }
     }
     if (q.labelId) {
       where.AND.push({ labels: { some: { labelId: q.labelId } } });
