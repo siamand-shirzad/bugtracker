@@ -34,6 +34,17 @@ export async function GET() {
       _count: { _all: true },
     });
 
+    // Priority × Stage matrix for the heatmap
+    const priorityStageRows = await db.bug.groupBy({
+      by: ["priority", "environmentStage"],
+      _count: { _all: true },
+    });
+    const priorityStageMatrix = priorityStageRows.map((r) => ({
+      priority: r.priority,
+      stage: r.environmentStage,
+      count: r._count._all,
+    }));
+
     // Assignee workload: group by assignee, count open vs closed
     const allBugs = await db.bug.findMany({
       select: { assignee: true, status: true },
@@ -131,6 +142,7 @@ export async function GET() {
         .filter((r) => r.envPlatform)
         .map((r) => ({ name: r.envPlatform ?? "Unknown", value: r._count._all })),
       byAssignee,
+      priorityStageMatrix,
       resolutionTimeHours,
       recent: recentRows.map(serializeBug),
     };

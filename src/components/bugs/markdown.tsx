@@ -2,7 +2,23 @@
 
 import * as React from "react"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
 import { cn } from "@/lib/utils"
+
+// Allow `target` and `rel` on <a> tags in the sanitized output
+const schema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    a: [
+      ...(defaultSchema.attributes?.a ?? []),
+      "target",
+      "rel",
+      "title",
+    ],
+  },
+}
 
 interface MarkdownProps {
   children: string
@@ -10,12 +26,8 @@ interface MarkdownProps {
 }
 
 /**
- * Lightweight markdown renderer for comment bodies.
- * Supports: headings, bold/italic, inline code, code blocks, lists,
- * links, blockquotes, and line breaks.
- *
- * Note: react-markdown v10 requires `remark-gfm` for tables/strikethrough
- * which we don't have installed, so those features are intentionally omitted.
+ * Markdown renderer with GitHub-flavored markdown support (tables,
+ * strikethrough, task lists, autolinks) and HTML sanitization.
  */
 export function Markdown({ children, className }: MarkdownProps) {
   return (
@@ -38,18 +50,30 @@ export function Markdown({ children, className }: MarkdownProps) {
         "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ul]:space-y-0.5",
         "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_ol]:space-y-0.5",
         "[&_li]:text-sm",
+        // Task list items (GFM)
+        "[&_:is(ul:has(input[type=checkbox]))]:list-none [&_:is(ul:has(input[type=checkbox]))]:pl-2",
+        "[&_li:has(input[type=checkbox])]:flex [&_li:has(input[type=checkbox])]:items-start [&_li:has(input[type=checkbox])]:gap-1.5",
+        "[&_input[type=checkbox]]:mt-0.5 [&_input[type=checkbox]]:accent-primary",
         // Links
         "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:opacity-80",
         // Blockquote
         "[&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:pl-3 [&_blockquote]:my-1.5 [&_blockquote]:text-muted-foreground",
-        // Strong/em
-        "[&_strong]:font-semibold [&_em]:italic",
+        // Strong/em/del
+        "[&_strong]:font-semibold [&_em]:italic [&_del]:line-through [&_del]:text-muted-foreground",
         // Horizontal rule
         "[&_hr]:border-muted-foreground/30 [&_hr]:my-2",
+        // Tables (GFM)
+        "[&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_table]:text-xs",
+        "[&_thead]:bg-muted/50",
+        "[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold",
+        "[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1",
+        "[&_tbody_tr:nth-child(even)]:bg-muted/20",
         className,
       )}
     >
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeSanitize, schema]]}
         components={{
           // Open links in new tab safely
           a: ({ href, children, ...props }) => (
@@ -62,8 +86,6 @@ export function Markdown({ children, className }: MarkdownProps) {
               {children}
             </a>
           ),
-          // Force code blocks to render with a wrapper for styling
-          pre: ({ children }) => <pre>{children}</pre>,
         }}
       >
         {children}

@@ -13,6 +13,7 @@ import { LabelsView } from "@/components/bugs/labels-view"
 import { BugFormDialog } from "@/components/bugs/bug-form-dialog"
 import { CommandPalette } from "@/components/bugs/command-palette"
 import { ShortcutsHelpDialog } from "@/components/bugs/shortcuts-help-dialog"
+import { NotificationBell } from "@/components/bugs/notification-bell"
 import { AppFooter } from "@/components/bugs/app-footer"
 import { useBugStore } from "@/store/bug-store"
 import { useLabels } from "@/hooks/use-bugs"
@@ -140,6 +141,7 @@ export function AppContent() {
             >
               <CommandIcon className="h-4 w-4" />
             </Button>
+            <NotificationBell />
             <Button size="sm" className="h-8 gap-1.5" onClick={openCreateForm}>
               <Plus className="h-4 w-4" />
               New

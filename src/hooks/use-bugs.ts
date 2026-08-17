@@ -8,6 +8,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { useNotificationStore } from "@/store/notification-store"
 import type {
   Bug,
   BugComment,
@@ -112,9 +113,15 @@ export function useCreateBug() {
       }
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (bug: Bug) => {
       qc.invalidateQueries({ queryKey: bugKeys.all })
       toast.success("Bug report created")
+      useNotificationStore.getState().addNotification({
+        type: "bug_created",
+        title: "Bug report created",
+        description: bug.summary,
+        bugId: bug.id,
+      })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -140,6 +147,16 @@ export function useUpdateBug(id: string) {
       qc.setQueryData(bugKeys.detail(id), updated)
       qc.invalidateQueries({ queryKey: bugKeys.lists() })
       qc.invalidateQueries({ queryKey: bugKeys.stats() })
+      // Detect status change for a special "bug_closed" notification
+      const prevData = qc.getQueryData<Bug>(bugKeys.detail(id))
+      if (prevData && prevData.status === "open" && updated.status === "closed") {
+        useNotificationStore.getState().addNotification({
+          type: "bug_closed",
+          title: "Bug closed",
+          description: updated.summary,
+          bugId: updated.id,
+        })
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -301,6 +318,11 @@ export function useBulkAction() {
     onSuccess: (data: { affected: number; action: string }) => {
       qc.invalidateQueries({ queryKey: bugKeys.all })
       toast.success(`Applied to ${data.affected} bug${data.affected === 1 ? "" : "s"}`)
+      useNotificationStore.getState().addNotification({
+        type: "bulk_action",
+        title: `Bulk ${data.action} applied`,
+        description: `${data.affected} bug${data.affected === 1 ? "" : "s"} updated`,
+      })
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -483,9 +505,15 @@ export function useCreateComment(bugId: string) {
       }
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (comment: BugComment) => {
       qc.invalidateQueries({ queryKey: [...bugKeys.detail(bugId), "comments"] })
       toast.success("Comment added")
+      useNotificationStore.getState().addNotification({
+        type: "comment_added",
+        title: `Comment by ${comment.author}`,
+        description: comment.body.slice(0, 80) + (comment.body.length > 80 ? "…" : ""),
+        bugId,
+      })
     },
     onError: (e: Error) => toast.error(e.message),
   })

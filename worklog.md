@@ -938,3 +938,157 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 2
 test comments (one with markdown formatting). Markdown rendering, the formatting
 toolbar, Export .md, assignee workload, and resolution time widgets are all functional.
+
+---
+
+# Round 6 — GFM Markdown, Notifications, Heatmap & Export Menu (Task ID: 6)
+
+## Current status assessment (start of round)
+
+Round 5 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled GFM markdown, in-app notifications, priority heatmap,
+export menu, and styling polish.
+
+## Goals for this round
+
+1. **Full GFM markdown** — install `remark-gfm` + `rehype-sanitize` for tables/strikethrough/task lists
+2. **In-app notification bell** — Zustand-persisted store + bell with unread count + dropdown panel
+3. **Priority × Stage heatmap** — colored matrix on the dashboard
+4. **Export dropdown menu** — consolidate Markdown/JSON/Template/Print into one menu
+5. **Styling polish** — heatmap colors, notification avatars, bell pulse animation
+
+## Completed modifications
+
+### New packages installed
+- **`remark-gfm@4.0.1`** — GitHub-flavored markdown (tables, strikethrough, task lists, autolinks)
+- **`rehype-sanitize@6.0.0`** — HTML sanitization with a custom schema allowing `target`/`rel` on links
+
+### New store — `src/store/notification-store.ts`
+- Zustand store with `persist` middleware (localStorage key `ib4g:notifications`).
+- `AppNotification` type: `id`, `type` (bug_created/bug_updated/bug_closed/comment_added/bulk_action),
+  `title`, `description`, `bugId?`, `timestamp`, `read`.
+- Actions: `addNotification`, `markAllRead`, `markRead`, `removeNotification`, `clearAll`.
+- Keeps last 50 notifications, tracks `unreadCount`, persists across sessions.
+
+### New UI component — `src/components/bugs/notification-bell.tsx`
+- Bell icon button with a pulsing red unread-count badge.
+- Popover panel with:
+  - Header: "Notifications" + unread badge + "Mark all read" + "Clear" actions.
+  - List: each notification has a colored icon circle, title, description (2-line clamp),
+    relative timestamp, unread dot, and a hover-dismiss (X) button.
+  - Empty state with bell icon + helpful text.
+  - ScrollArea capped at 360px.
+- Clicking a notification marks it read + navigates to the bug detail (if `bugId` is set).
+
+### Enhanced hooks — `src/hooks/use-bugs.ts`
+- `useCreateBug` → dispatches a `bug_created` notification on success.
+- `useUpdateBug` → detects `open → closed` status change and dispatches a `bug_closed` notification.
+- `useBulkAction` → dispatches a `bulk_action` notification with the action type + affected count.
+- `useCreateComment` → dispatches a `comment_added` notification with the author + body preview.
+
+### Enhanced `src/components/bugs/markdown.tsx`
+- Now uses `remarkGfm` plugin for tables, strikethrough, task lists, autolinks.
+- Uses `rehypeSanitize` with a custom schema that allows `target`/`rel` on `<a>` tags.
+- Added themed styling for: tables (border-collapse, header bg, zebra rows), `del` (line-through,
+  muted), task list items (checkbox styling, flex layout).
+
+### Enhanced API — `GET /api/bugs/stats`
+- Added `priorityStageMatrix`: groups bugs by `[priority, environmentStage]` and returns
+  `{ priority, stage, count }[]` for the heatmap.
+
+### Enhanced `src/lib/types.ts`
+- `BugStats` now includes `priorityStageMatrix`.
+
+### New dashboard widget — `PriorityHeatmapCard` (in dashboard-view.tsx)
+- 4×3 matrix (critical/high/medium/low × dev/staging/production) with colored cells.
+- Each cell's background color matches the priority (rose/orange/amber/sky) with opacity
+  scaled by count relative to the max (0.35–1.0 opacity).
+- Row totals (per priority) + column totals (per stage) + grand total.
+- Hover scale effect on cells, "·" for zero counts.
+- Sticky first column (priority labels) for horizontal scroll on mobile.
+
+### Enhanced `src/components/bugs/bug-detail-view.tsx`
+- Replaced separate "Export .md" + "Copy template" + "Print" buttons with a single
+  **Export dropdown menu** (FileDown icon + ChevronDown):
+  - Download as Markdown (.md)
+  - Copy as JSON — copies the raw bug object as pretty-printed JSON
+  - Copy IB4G template
+  - Print / Save as PDF
+- Added `handleCopyJson` handler + `useBugComments` hook (for markdown export).
+
+### Enhanced `src/components/bugs/app-sidebar.tsx`
+- Added the `NotificationBell` to the sidebar footer (next to the theme toggle).
+- Redesigned the footer to show bell + theme side-by-side when expanded, stacked when collapsed.
+
+### Enhanced `src/components/bugs/app-content.tsx`
+- Added the `NotificationBell` to the mobile header (between command palette + New bug).
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Markdown with tables/strikethrough renders (remark-gfm) | ✅ |
+| Dashboard: Priority × Stage Heatmap shows 4×3 matrix with colored cells + totals | ✅ |
+| Heatmap: Critical/Production=2, High/Staging=2, Medium/Dev=2, etc. (12 total) | ✅ |
+| Notification bell in sidebar footer with pulse animation | ✅ |
+| Empty state: "No notifications" with helpful text | ✅ |
+| Added comment → bell shows "(1 unread)" badge | ✅ |
+| Bell popover: "1 new" + "Comment by Anonymous" + "Testing notification system!" + timestamp | ✅ |
+| Bug detail: Export dropdown with 4 options (Markdown, JSON, Template, Print) | ✅ |
+| Stats API returns `priorityStageMatrix` (7 entries) | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/store/notification-store.ts                   ← Zustand-persisted notification store
+src/components/bugs/notification-bell.tsx         ← Bell + popover panel
+src/components/bugs/markdown.tsx                  ← + remark-gfm + rehype-sanitize
+src/app/api/bugs/stats/route.ts                   ← + priorityStageMatrix
+src/lib/types.ts                                  ← + BugStats.priorityStageMatrix
+src/hooks/use-bugs.ts                             ← + notification dispatches in 4 hooks
+src/components/bugs/bug-detail-view.tsx           ← + Export dropdown menu + Copy as JSON
+src/components/bugs/dashboard-view.tsx            ← + PriorityHeatmapCard
+src/components/bugs/app-sidebar.tsx               ← + NotificationBell in footer
+src/components/bugs/app-content.tsx              ← + NotificationBell in mobile header
+```
+
+## Unresolved issues / risks
+
+1. **Notifications are client-side only** — stored in localStorage, not synced across
+   devices. Would need a server-side store + polling/WebSocket for real cross-device sync.
+2. **No notification types for imports/exports** — these actions don't generate notifications
+   (they're user-initiated and already get toasts).
+3. **Heatmap cells not clickable** — could link to a filtered bug list (priority=X & stage=Y).
+4. **Markdown sanitization** — `rehype-sanitize` with the default schema + link attributes.
+   Could tighten further for production (e.g. strip all HTML).
+5. **Bell unread count** — doesn't auto-decrement when a new notification is added while
+   the panel is open. Would need an effect to mark-all-read on open.
+
+## Priority recommendations for the next phase
+
+1. **Click heatmap cells** → navigate to filtered bug list.
+2. **Auto-mark notifications read** when the panel is opened for >2 seconds.
+3. **WebSocket mini-service** for real-time notification push.
+4. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+5. **User model + NextAuth** — real identities for comment authors + assignees.
+6. **Watch/subscribe to bugs** — get notified on changes (requires auth).
+7. **CSV import with PapaParse** — robust multi-line cell handling.
+8. **Notification preferences** — let users mute certain types.
+9. **Bug detail "copy as cURL"** — export a curl command for the API.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+GFM markdown, the notification bell (with persisted unread state), the priority heatmap,
+and the consolidated export dropdown are all functional.

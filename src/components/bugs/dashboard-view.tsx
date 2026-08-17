@@ -27,6 +27,7 @@ import {
   Clock,
   Flame,
   Globe,
+  Grid3x3,
   Plus,
   Timer,
   TrendingDown,
@@ -511,6 +512,9 @@ export function DashboardView() {
         <AssigneeWorkloadCard stats={stats} loading={isLoading} />
         <ResolutionTimeCard stats={stats} loading={isLoading} />
       </div>
+
+      {/* Priority × Stage heatmap */}
+      <PriorityHeatmapCard stats={stats} loading={isLoading} />
     </div>
   )
 }
@@ -857,5 +861,144 @@ function ResolutionStat({
       </p>
       <p className={cn("text-xl font-bold tabular-nums", accent)}>{value}</p>
     </div>
+  )
+}
+
+interface PriorityHeatmapCardProps {
+  stats: ReturnType<typeof useBugStats>["data"]
+  loading: boolean
+}
+
+const HEATMAP_PRIORITIES = ["critical", "high", "medium", "low"] as const
+const HEATMAP_STAGES = ["dev", "staging", "production"] as const
+
+const PRIORITY_HEAT: Record<string, string> = {
+  critical: "bg-rose-500",
+  high: "bg-orange-500",
+  medium: "bg-amber-500",
+  low: "bg-sky-500",
+}
+
+function PriorityHeatmapCard({ stats, loading }: PriorityHeatmapCardProps) {
+  const matrix = stats?.priorityStageMatrix ?? []
+  const maxCount = Math.max(1, ...matrix.map((m) => m.count))
+
+  const getCell = (priority: string, stage: string) => {
+    const cell = matrix.find((m) => m.priority === priority && m.stage === stage)
+    return cell?.count ?? 0
+  }
+
+  const rowTotal = (priority: string) =>
+    HEATMAP_STAGES.reduce((sum, s) => sum + getCell(priority, s), 0)
+  const colTotal = (stage: string) =>
+    HEATMAP_PRIORITIES.reduce((sum, p) => sum + getCell(p, stage), 0)
+  const grandTotal = HEATMAP_PRIORITIES.reduce((sum, p) => sum + rowTotal(p), 0)
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Grid3x3 className="h-4 w-4 text-muted-foreground" />
+          Priority × Stage Heatmap
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Bug count by priority and environment stage ({grandTotal} total)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : grandTotal === 0 ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <Grid3x3 className="h-7 w-7 mx-auto opacity-40 mb-2" />
+            No bugs to display
+          </div>
+        ) : (
+          <div className="overflow-x-auto scrollbar-thin">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground p-2 sticky left-0 bg-background">
+                    Priority
+                  </th>
+                  {HEATMAP_STAGES.map((s) => (
+                    <th key={s} className="p-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <span>{STAGE_CONFIG[s].icon}</span>
+                        {STAGE_CONFIG[s].label}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="p-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-l">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {HEATMAP_PRIORITIES.map((p) => {
+                  const rt = rowTotal(p)
+                  return (
+                    <tr key={p} className="group">
+                      <td className="p-2 text-xs font-medium sticky left-0 bg-background">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={cn("h-2 w-2 rounded-full", PRIORITY_CONFIG[p].dot)} />
+                          <span className="capitalize">{p}</span>
+                        </span>
+                      </td>
+                      {HEATMAP_STAGES.map((s) => {
+                        const count = getCell(p, s)
+                        const intensity = count / maxCount
+                        const heatColor = PRIORITY_HEAT[p]
+                        return (
+                          <td key={s} className="p-1.5 text-center">
+                            <div
+                              className={cn(
+                                "h-10 rounded-md flex items-center justify-center font-semibold tabular-nums transition-all hover:scale-105 cursor-default",
+                                count === 0
+                                  ? "bg-muted/30 text-muted-foreground/40"
+                                  : "text-white hover:shadow-md",
+                              )}
+                              style={
+                                count > 0
+                                  ? {
+                                      backgroundColor: heatColor.replace("500", "500"),
+                                      opacity: 0.35 + intensity * 0.65,
+                                    }
+                                  : undefined
+                              }
+                              title={`${p} / ${s}: ${count} bug${count === 1 ? "" : "s"}`}
+                            >
+                              {count > 0 ? count : "·"}
+                            </div>
+                          </td>
+                        )
+                      })}
+                      <td className="p-2 text-center font-bold tabular-nums border-l bg-muted/20">
+                        {rt}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2">
+                  <td className="p-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-background">
+                    Total
+                  </td>
+                  {HEATMAP_STAGES.map((s) => (
+                    <td key={s} className="p-2 text-center font-bold tabular-nums bg-muted/20">
+                      {colTotal(s)}
+                    </td>
+                  ))}
+                  <td className="p-2 text-center font-bold tabular-nums border-l bg-primary/10 text-primary">
+                    {grandTotal}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

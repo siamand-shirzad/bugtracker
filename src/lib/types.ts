@@ -73,6 +73,7 @@ export interface BugStats {
   byStage: { name: string; value: number; fill: string }[]
   byPlatform: { name: string; value: number }[]
   byAssignee: { name: string | null; open: number; closed: number; total: number }[]
+  priorityStageMatrix: { priority: string; stage: string; count: number }[]
   resolutionTimeHours: {
     avg: number | null
     min: number | null

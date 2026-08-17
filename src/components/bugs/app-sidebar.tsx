@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { NotificationBell } from "@/components/bugs/notification-bell"
 import { SIDEBAR_ITEMS, APP_NAME, APP_VERSION } from "@/lib/constants"
 import { useBugStore } from "@/store/bug-store"
 import type { SidebarView } from "@/lib/constants"
@@ -141,33 +142,35 @@ export function AppSidebar({ collapsed, onToggle, onNavigate, variant = "desktop
 
       {/* Footer */}
       <div className="p-2 space-y-1 shrink-0">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          title={collapsed ? "Toggle theme" : undefined}
-          className={cn(
-            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors",
-            collapsed && "justify-center",
+        <div className={cn("flex items-center gap-1", collapsed ? "justify-center" : "justify-between")}>
+          <NotificationBell />
+          {!collapsed && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title="Toggle theme"
+              className="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+            >
+              {mounted ? (
+                theme === "dark" ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />
+              ) : (
+                <Sun className="h-4.5 w-4.5" />
+              )}
+            </button>
           )}
-        >
-          {mounted ? (
-            theme === "dark" ? (
-              <>
-                <Sun className="h-4.5 w-4.5 shrink-0" />
-                {!collapsed && <span>Light mode</span>}
-              </>
+        </div>
+        {collapsed && (
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            title="Toggle theme"
+            className="w-full flex items-center justify-center px-2.5 py-2 rounded-md text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+          >
+            {mounted ? (
+              theme === "dark" ? <Sun className="h-4.5 w-4.5" /> : <Moon className="h-4.5 w-4.5" />
             ) : (
-              <>
-                <Moon className="h-4.5 w-4.5 shrink-0" />
-                {!collapsed && <span>Dark mode</span>}
-              </>
-            )
-          ) : (
-            <>
-              <Sun className="h-4.5 w-4.5 shrink-0" />
-              {!collapsed && <span>Theme</span>}
-            </>
-          )}
-        </button>
+              <Sun className="h-4.5 w-4.5" />
+            )}
+          </button>
+        )}
 
         {variant === "desktop" && (
           <button

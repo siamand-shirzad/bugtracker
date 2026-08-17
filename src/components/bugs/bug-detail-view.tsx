@@ -7,6 +7,7 @@ import {
   Bug as BugIcon,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardCopy,
   Cpu,
@@ -54,6 +55,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { StatusBadge } from "@/components/bugs/status-badge"
 import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
@@ -137,6 +146,17 @@ export function BugDetailView() {
     toast.success("Markdown downloaded")
   }
 
+  const handleCopyJson = async () => {
+    if (!bug) return
+    const json = JSON.stringify(bug, null, 2)
+    try {
+      await navigator.clipboard.writeText(json)
+      toast.success("Bug JSON copied to clipboard")
+    } catch {
+      toast.error("Failed to copy JSON")
+    }
+  }
+
   if (!bugId) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
@@ -198,18 +218,36 @@ export function BugDetailView() {
             <Share2 className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExportMarkdown}>
-            <FileDown className="h-4 w-4" />
-            <span className="hidden sm:inline">Export .md</span>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopyTemplate}>
-            <ClipboardCopy className="h-4 w-4" />
-            <span className="hidden sm:inline">Copy template</span>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
-            <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <FileDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Export bug report</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportMarkdown}>
+                <FileDown className="h-3.5 w-3.5 mr-2" />
+                Download as Markdown (.md)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyJson}>
+                <ClipboardCopy className="h-3.5 w-3.5 mr-2" />
+                Copy as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyTemplate}>
+                <ClipboardCopy className="h-3.5 w-3.5 mr-2" />
+                Copy IB4G template
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => window.print()}>
+                <Printer className="h-3.5 w-3.5 mr-2" />
+                Print / Save as PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditForm(bug.id)}>
             <Pencil className="h-4 w-4" />
             <span className="hidden sm:inline">Edit</span>
