@@ -40,7 +40,7 @@ export function InfoView() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Endpoints</h1>
+        <h1 className="text-2xl font-display font-semibold tracking-tight">Endpoints</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Application metadata, API reference, and setup guide.
         </p>

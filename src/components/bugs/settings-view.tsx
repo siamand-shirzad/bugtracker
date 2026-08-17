@@ -47,7 +47,7 @@ export function SettingsView() {
     <div className="space-y-5 animate-fade-in max-w-3xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-display font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Customize your IB4G BugTracker experience. All preferences are saved locally.
         </p>

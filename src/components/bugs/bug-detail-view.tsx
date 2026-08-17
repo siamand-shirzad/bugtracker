@@ -214,7 +214,7 @@ export function BugDetailView() {
             )}
             <span className="text-xs text-muted-foreground font-mono">{bug.id}</span>
           </div>
-          <h1 className="text-xl font-semibold tracking-tight break-words">
+          <h1 className="text-xl font-display font-semibold tracking-tight break-words">
             {bug.summary}
           </h1>
           <div className="flex items-center gap-2 mt-2 flex-wrap">

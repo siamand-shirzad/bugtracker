@@ -64,7 +64,7 @@ export function DashboardView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-display font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Real-time overview of bug reports across all environments.
           </p>
@@ -333,7 +333,7 @@ export function DashboardView() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-semibold tabular-nums">
+                  <span className="text-2xl font-mono font-semibold tabular-nums">
                     {stats?.total ?? 0}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -392,7 +392,7 @@ export function DashboardView() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-semibold tabular-nums">
+                  <span className="text-2xl font-mono font-semibold tabular-nums">
                     {stats?.byStage.reduce((a, b) => a + b.value, 0) ?? 0}
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -555,7 +555,7 @@ function StatCard({
         {loading ? (
           <Skeleton className="h-8 w-16" />
         ) : (
-          <div className={cn("text-3xl font-semibold tabular-nums", accent)}>
+          <div className={cn("text-3xl font-mono font-semibold tabular-nums", accent)}>
             {value ?? 0}
           </div>
         )}
@@ -858,7 +858,7 @@ function ResolutionStat({
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
         {label}
       </p>
-      <p className={cn("text-xl font-bold tabular-nums", accent)}>{value}</p>
+      <p className={cn("text-xl font-mono font-bold tabular-nums", accent)}>{value}</p>
     </div>
   )
 }

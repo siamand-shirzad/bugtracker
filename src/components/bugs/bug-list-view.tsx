@@ -342,7 +342,7 @@ export function BugListView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Bug Reports</h1>
+          <h1 className="text-2xl font-display font-semibold tracking-tight">Bug Reports</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {total} report{total === 1 ? "" : "s"} tracked
             {isFetching && !isLoading && (

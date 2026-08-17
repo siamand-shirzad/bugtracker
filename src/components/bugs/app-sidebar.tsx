@@ -53,7 +53,7 @@ export function AppSidebar({ collapsed, onToggle, onNavigate, variant = "desktop
           <BugIcon className="h-3.5 w-3.5" />
         </div>
         {!collapsed && (
-          <span className="text-[13px] font-semibold tracking-tight">{APP_NAME}</span>
+          <span className="text-[13px] font-display font-semibold tracking-tight">{APP_NAME}</span>
         )}
       </div>
 
