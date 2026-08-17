@@ -1537,3 +1537,148 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 Collapsible groups with chevron animations and group-level "select all" with
 indeterminate state are functional.
+
+---
+
+# Round 11 — Collapse All/Expand All, Settings Page & Keyboard Shortcuts (Task ID: 11)
+
+## Current status assessment (start of round)
+
+Round 10 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled the top 3: collapse all/expand all, settings page, and keyboard
+shortcuts for settings navigation.
+
+## Goals for this round
+
+1. **Collapse all / Expand all** — toolbar buttons for grouped bug list
+2. **Settings page** — theme, default page size, default group-by, trend chart
+   window, notification preferences, data/storage info
+3. **Keyboard shortcut `g s`** — navigate to Settings
+4. **Command palette** — "Go to Settings" option
+5. **Styling polish** — settings page layout with cards, toggles, selects
+
+## Completed modifications
+
+### New store — `src/store/settings-store.ts`
+- Zustand store with `persist` middleware (localStorage key `ib4g:settings`).
+- Settings: `defaultPageSize`, `defaultGroupBy`, `defaultTrendDays`,
+  `notifyOnBugCreated`, `notifyOnBugClosed`, `notifyOnCommentAdded`,
+  `notifyOnBulkAction`.
+- Actions: setters for each field + `resetSettings()`.
+- All preferences are saved automatically to localStorage.
+
+### Enhanced `src/components/bugs/bug-list-view.tsx` — GroupedBugList
+- **Centralized collapse state** — moved from per-GroupCard `useState` to a
+  `collapsedGroups: Set<string>` in GroupedBugList. This enables the
+  collapse-all/expand-all feature.
+- **"Collapse all" button** — collapses all groups by adding all group keys
+  to the `collapsedGroups` set. Disabled when all are already collapsed.
+- **"Expand all" button** — expands all groups by clearing the set. Disabled
+  when no groups are collapsed.
+- **ChevronsDownUp / ChevronsUpDown icons** — visual indicators for the buttons.
+- **GroupCard refactored** — now receives `isCollapsed` and `onToggleCollapse`
+  props instead of managing its own state. Cleaner separation of concerns.
+
+### New UI component — `src/components/bugs/settings-view.tsx`
+- Full settings page with 4 cards:
+  1. **Appearance** — Light/Dark theme toggle buttons (uses next-themes).
+  2. **Bug List Defaults** — page size (5/10/20/50), default grouping
+     (none/assignee/priority/stage/status), trend chart window (7/14/30/90 days).
+     "Apply defaults now" button applies the settings to the current session.
+  3. **Notification Preferences** — 4 toggles (Bug report created, Bug closed,
+     Comment added, Bulk actions) using Switch components. Changes are persisted
+     to localStorage instantly.
+  4. **Data & Storage** — shows the localStorage keys used by the app
+     (`ib4g:settings`, `ib4g:notifications`, `ib4g:saved-filters`). "Reset all
+     settings to defaults" button.
+- Footer with app version + "Settings are saved automatically" note.
+
+### Enhanced `src/lib/constants.ts`
+- Added `"settings"` to the `SidebarView` type.
+- Added a Settings sidebar item (icon: `Settings`, label: "Settings", description:
+  "Preferences").
+- Added `Settings` icon import.
+
+### Enhanced `src/components/bugs/app-content.tsx`
+- Added `case "settings": return <SettingsView />` to the view router.
+
+### Enhanced `src/hooks/use-keyboard-shortcuts.ts`
+- Added `g s` shortcut to navigate to Settings.
+- Added it to the shortcuts list so it appears in the `?` help dialog.
+
+### Enhanced `src/components/bugs/command-palette.tsx`
+- Added "Go to Settings" command with `G S` shortcut hint.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Settings page renders with 4 cards (Appearance, Bug List Defaults, Notifications, Data & Storage) | ✅ |
+| Theme toggle (Light/Dark) works | ✅ |
+| Page size selector shows options (5/10/20/50 per page) | ✅ |
+| Default grouping selector shows 5 options | ✅ |
+| Trend chart window selector shows 7/14/30/90 days | ✅ |
+| Notification toggles: 4 switches present (Bug created, Bug closed, Comment, Bulk) | ✅ |
+| Toggling "Bug report created" → persisted to localStorage (`notifyOnBugCreated: false`) | ✅ |
+| Data & Storage shows localStorage keys | ✅ |
+| "Collapse all" button collapses all 4 priority groups | ✅ |
+| "Expand all" button restores all groups | ✅ |
+| `g s` keyboard shortcut navigates to Settings | ✅ |
+| Command palette shows "Go to Settings" with `G S` hint | ✅ |
+| Settings sidebar item appears in the nav | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/store/settings-store.ts                       ← Zustand-persisted settings store
+src/components/bugs/settings-view.tsx             ← full Settings page
+src/components/bugs/bug-list-view.tsx             ← + Collapse all/Expand all, centralized collapse state
+src/lib/constants.ts                              ← + "settings" SidebarView + Settings nav item
+src/components/bugs/app-content.tsx               ← + SettingsView in view router
+src/hooks/use-keyboard-shortcuts.ts               ← + g s shortcut for Settings
+src/components/bugs/command-palette.tsx           ← + Go to Settings command
+```
+
+## Unresolved issues / risks
+
+1. **Settings don't auto-apply on app load** — the user must click "Apply defaults
+   now" or the defaults are only used when the store initializes. Could wire the
+   settings store to the bug store + dashboard on mount.
+2. **Notification preferences not enforced** — the toggles are saved but the
+   notification dispatch hooks don't check them yet. Need to wire
+   `useSettingsStore` into the mutation hooks.
+3. **No "reset notifications"** — the reset button only resets settings, not
+   the notification history.
+4. **Collapsed state resets on group-by change** — switching grouping mode
+   clears the collapsedGroups state.
+
+## Priority recommendations for the next phase
+
+1. **Wire notification preferences** — check `useSettingsStore` in mutation hooks
+   before dispatching notifications.
+2. **Auto-apply settings on mount** — initialize bug store + dashboard from
+   settings store on first load.
+3. **WebSocket mini-service** for real-time notification push.
+4. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+5. **User model + NextAuth** — real identities for comment authors + assignees.
+6. **CSV import with PapaParse** — robust multi-line cell handling.
+7. **Bug detail "Edit history"** — show all edits inline (not just events).
+8. **Dashboard "assignee workload over time"** — stacked area per assignee.
+9. **Bug list column sorting** — click column header to sort.
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+The Settings page (with theme, defaults, notification prefs, data info), collapse-all/expand-all,
+and the `g s` keyboard shortcut are all functional.

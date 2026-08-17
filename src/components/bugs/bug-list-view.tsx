@@ -7,6 +7,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Download,
   FileText,
   Filter,
@@ -1017,6 +1019,24 @@ function GroupedBugList({
   hasActiveFilters,
   openCreateForm,
 }: GroupedBugListProps) {
+  // Centralized collapse state: a Set of collapsed group keys
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(new Set())
+  const allCollapsed = groups.every(([key, bugs]) => bugs.length === 0 || collapsedGroups.has(key))
+
+  const toggleCollapse = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const collapseAll = () => {
+    setCollapsedGroups(new Set(groups.filter(([, bugs]) => bugs.length > 0).map(([key]) => key)))
+  }
+  const expandAll = () => setCollapsedGroups(new Set())
+
   if (isLoading) {
     return (
       <Card>
@@ -1050,6 +1070,29 @@ function GroupedBugList({
 
   return (
     <div className="space-y-3">
+      {/* Collapse/Expand all toolbar */}
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs"
+          onClick={collapseAll}
+          disabled={allCollapsed}
+        >
+          <ChevronsDownUp className="h-3.5 w-3.5" />
+          Collapse all
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs"
+          onClick={expandAll}
+          disabled={collapsedGroups.size === 0}
+        >
+          <ChevronsUpDown className="h-3.5 w-3.5" />
+          Expand all
+        </Button>
+      </div>
       {groups.map(([key, bugs]) => {
         if (bugs.length === 0) return null
         const groupMeta = getGroupMeta(groupBy, key)
@@ -1062,6 +1105,8 @@ function GroupedBugList({
             selected={selected}
             toggleSelect={toggleSelect}
             selectBug={selectBug}
+            isCollapsed={collapsedGroups.has(key)}
+            onToggleCollapse={() => toggleCollapse(key)}
           />
         )
       })}
@@ -1077,6 +1122,8 @@ function GroupCard({
   selected,
   toggleSelect,
   selectBug,
+  isCollapsed,
+  onToggleCollapse,
 }: {
   groupKey: string
   bugs: Bug[]
@@ -1084,8 +1131,10 @@ function GroupCard({
   selected: Set<string>
   toggleSelect: (id: string) => void
   selectBug: (id: string) => void
+  isCollapsed: boolean
+  onToggleCollapse: () => void
 }) {
-  const [collapsed, setCollapsed] = React.useState(false)
+  const collapsed = isCollapsed
   const allGroupSelected = bugs.every((b) => selected.has(b.id))
   const someGroupSelected = bugs.some((b) => selected.has(b.id)) && !allGroupSelected
   const groupSelectedCount = bugs.filter((b) => selected.has(b.id)).length
@@ -1103,7 +1152,7 @@ function GroupCard({
       {/* Group header (clickable to collapse) */}
       <div
         className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors select-none"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={onToggleCollapse}
       >
         <div className="flex items-center gap-2">
           {/* Collapse chevron */}

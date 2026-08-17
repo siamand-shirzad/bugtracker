@@ -14,6 +14,7 @@ import {
   Tag,
   Info,
   Keyboard,
+  Settings,
   Loader2,
 } from "lucide-react"
 import {
@@ -234,6 +235,15 @@ export function CommandPalette({
                 <CommandShortcut>
                   <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium font-mono">
                     G E
+                  </kbd>
+                </CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => goTo("settings")}>
+                <Settings className="h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>
+                  <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium font-mono">
+                    G S
                   </kbd>
                 </CommandShortcut>
               </CommandItem>

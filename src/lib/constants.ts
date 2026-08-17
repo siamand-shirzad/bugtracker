@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Info,
+  Settings,
   Tag,
   type LucideIcon,
 } from "lucide-react"
@@ -171,7 +172,7 @@ export const LABEL_COLOR_MAP: Record<
 }
 
 // ---- Sidebar nav ----
-export type SidebarView = "dashboard" | "bugs" | "labels" | "endpoints"
+export type SidebarView = "dashboard" | "bugs" | "labels" | "endpoints" | "settings"
 
 export interface SidebarItem {
   id: SidebarView
@@ -204,6 +205,12 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     label: "Endpoints",
     icon: Info,
     description: "API reference",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    description: "Preferences",
   },
 ]
 

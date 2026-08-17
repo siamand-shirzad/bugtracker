@@ -10,6 +10,7 @@ import { BugListView } from "@/components/bugs/bug-list-view"
 import { BugDetailView } from "@/components/bugs/bug-detail-view"
 import { InfoView } from "@/components/bugs/info-view"
 import { LabelsView } from "@/components/bugs/labels-view"
+import { SettingsView } from "@/components/bugs/settings-view"
 import { BugFormDialog } from "@/components/bugs/bug-form-dialog"
 import { CommandPalette } from "@/components/bugs/command-palette"
 import { ShortcutsHelpDialog } from "@/components/bugs/shortcuts-help-dialog"
@@ -84,6 +85,8 @@ export function AppContent() {
         return <LabelsView />
       case "endpoints":
         return <InfoView />
+      case "settings":
+        return <SettingsView />
       default:
         return <DashboardView />
     }

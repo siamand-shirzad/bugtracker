@@ -96,6 +96,12 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
       action: () => goTo("endpoints"),
     },
     {
+      keys: "g s",
+      description: "Go to Settings",
+      group: "Navigation",
+      action: () => goTo("settings"),
+    },
+    {
       keys: "Esc",
       description: "Close dialogs / go back",
       group: "Other",
@@ -162,6 +168,7 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
           b: () => goTo("bugs"),
           l: () => goTo("labels"),
           e: () => goTo("endpoints"),
+          s: () => goTo("settings"),
         }
         if (map[key]) {
           e.preventDefault()
