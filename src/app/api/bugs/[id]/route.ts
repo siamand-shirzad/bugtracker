@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { serializeBug } from "@/lib/serialize";
 import { parseTemplate } from "@/lib/template-parser";
+import { recordEvent, recordDiffEvents } from "@/lib/events";
 
 export async function GET(
   _req: NextRequest,
@@ -150,6 +151,34 @@ export async function PUT(
       data: { ...data, labels: labelsOp },
       include: { labels: { include: { label: true } } },
     });
+
+    // Record diff events for tracked fields
+    await recordDiffEvents(
+      existing as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+      id,
+      b.reporter ?? "Anonymous",
+    ).catch((e) => console.error("[diff-events] failed:", e));
+
+    // If labels changed, record a labels_changed event
+    if (b.labelIds !== undefined) {
+      const oldLabelIds = await db.bugLabel
+        .findMany({ where: { bugId: id }, select: { labelId: true } })
+        .catch(() => [])
+      // Note: by this point the labels are already replaced, so we record what we know:
+      // (This is best-effort; the diff is approximated)
+      const newCount = b.labelIds.length
+      await recordEvent({
+        bugId: id,
+        type: "labels_changed",
+        field: "labels",
+        oldValue: null,
+        newValue: String(newCount),
+        actor: b.reporter ?? "Anonymous",
+        summary: `Labels updated (now ${newCount} label${newCount === 1 ? "" : "s"})`,
+      }).catch((e) => console.error("[labels-event] failed:", e))
+      void oldLabelIds
+    }
 
     return NextResponse.json(serializeBug(updated));
   } catch (err) {

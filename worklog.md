@@ -205,3 +205,232 @@ bun run scripts/seed.ts   # (re)seed sample data
 
 The dev server is currently running in the background and the database is seeded with 8 sample
 bug reports + 8 labels.
+
+---
+
+# Round 2 — Feature Expansion & Styling Polish (Task ID: 2)
+
+## Current status assessment (start of round)
+
+The v1.0.0 build from Round 1 was verified healthy: dev server returning 200 on all routes,
+no console/runtime errors, all 4 views rendering. No bugs to fix — the project was stable.
+
+Per the mandatory requirements (improve styling + add features), this round focused on
+high-value feature additions and visual polish.
+
+## Goals for this round
+
+1. **Activity log / audit trail** — track every bug change with a timeline UI
+2. **Bulk actions** — multi-select rows in the bug list with a bulk toolbar
+3. **CSV/JSON export & JSON import** — real file download (not just clipboard) + paste-JSON import
+4. **Command palette** (⌘K / Ctrl+K) — quick navigation + actions via cmdk
+5. **Keyboard shortcuts** — `n`, `/`, `?`, `g d/b/l/e`, `Esc`, `⌘K`
+6. **Saved filters** — persist filter presets to localStorage
+7. **Dashboard trend chart** — opened vs closed over 14 days (area chart with gradients)
+8. **Styling polish** — empty states, stagger animations, footer, KPI accent bars
+
+## Completed modifications
+
+### New Prisma model + APIs
+- **`prisma/schema.prisma`** — added `BugEvent` model (id, bugId, type, field, oldValue, newValue,
+  actor, summary, createdAt) with indexes on `[bugId, createdAt]` and `[createdAt]`. Added
+  `events BugEvent[]` relation to `Bug`.
+- **`src/lib/events.ts`** — `recordEvent()` + `recordDiffEvents()` helpers that diff before/after
+  bug rows and emit one event per changed tracked field (status, priority, stage, assignee,
+  summary, jiraId) plus a single `details_updated` event when overview/env/impact/notes change.
+- **`src/app/api/bugs/[id]/events/route.ts`** — `GET` returns the last 100 events for a bug.
+- **`src/app/api/bugs/bulk/route.ts`** — `POST` accepts `{ bugIds, action }` where action is
+  status / priority / stage / addLabel / delete. Records events for each affected bug.
+- **`src/app/api/bugs/trend/route.ts`** — `GET ?days=N` returns `{ points, totalOpened,
+  totalClosed }` by bucketing `Bug.createdAt` and `BugEvent` (type=status_changed, newValue=closed)
+  into daily buckets over the last N days (max 90).
+- **`src/app/api/bugs/export/route.ts`** — `GET ?format=csv|json` streams a real file download
+  with proper `Content-Disposition` header. CSV escapes commas/quotes/newlines.
+- **`src/app/api/bugs/import/route.ts`** — `POST { bugs: [...] }` accepts an array (max 500),
+  auto-creates missing labels by name, parses `overview` templates, records `created` events.
+
+### Auto-event recording
+- **`POST /api/bugs`** now records a `created` event after insertion.
+- **`PUT /api/bugs/[id]`** now diffs the before/after rows and records one event per changed
+  tracked field, plus a `labels_changed` event when `labelIds` is supplied.
+
+### New hooks (`src/hooks/`)
+- **`use-keyboard-shortcuts.ts`** — global keyboard hook. Handles `⌘K` (command palette),
+  `n` (new bug), `/` (focus search via custom event), `?` (shortcuts help), `g d/b/l/e`
+  (two-key navigation sequences), `Esc` (close dialog / go back). Uses a `handlersRef` to
+  avoid re-binding the listener on every render. Exports the `ShortcutDef[]` list for the
+  help dialog.
+- **`use-saved-filters.ts`** — persists filter presets to `localStorage` under
+  `ib4g:saved-filters`. Provides `saveCurrentFilter(name)`, `deleteSavedFilter(id)`,
+  `applySavedFilter(filters)`. Hydrates on mount.
+
+### New TanStack Query hooks (appended to `use-bugs.ts`)
+- `useBugEvents(bugId)` — fetches the activity timeline
+- `useBulkAction()` — applies a bulk action, invalidates the bug cache, toasts on success
+- `useBugTrend(days=14)` — fetches the opened/closed trend series
+- `useExportBugs()` — triggers a CSV/JSON download (creates a blob URL + synthetic `<a>`)
+- `useImportBugs()` — posts a JSON array, toasts created/skipped counts
+
+### New UI components (`src/components/bugs/`)
+- **`activity-timeline.tsx`** — vertical timeline with colored dots per event type,
+  relative timestamps, actor + field + old→new value chips. Empty state when no events.
+  Loading skeletons. Staggered fade-in.
+- **`command-palette.tsx`** — `CommandDialog` (cmdk) with Quick Actions, Navigation,
+  Appearance, and Recent Bugs groups. Shows keyboard shortcuts next to each item.
+  Footer with navigation hints.
+- **`shortcuts-help-dialog.tsx`** — grouped list (Navigation / Actions / Other) of all
+  shortcuts with `<kbd>` chips.
+- **`app-footer.tsx`** — sticky footer with app identity + version + theme indicator +
+  quick stats (Open / Closed / Critical) + "Press ⌘K for commands" hint.
+- **`empty-state.tsx`** — reusable empty-state component with a blurred icon halo,
+  title, description, and optional action button.
+
+### Enhanced components
+- **`bug-detail-view.tsx`** — added an "Activity" card in the sidebar showing the
+  `ActivityTimeline`. Hooked up `useBugEvents(bugId)`.
+- **`bug-list-view.tsx`** — major rewrite:
+  - Added a checkbox column (header = select-all-visible with indeterminate state)
+  - Bulk-action toolbar appears when ≥1 row selected: Status / Priority / Stage /
+    Add-label / Delete dropdowns + Clear button. Animated slide-in.
+  - Replaced the old "Export all" (clipboard copy) button with an Export dropdown
+    offering CSV and JSON file downloads.
+  - Added an Import button opening a dialog with a JSON textarea + paste-and-import.
+  - Added saved-filter chips below the filter bar (with popover preview + apply +
+    delete). "Save current" button appears when filters are active.
+  - Rows now stagger fade-in and highlight when selected (`bg-primary/5`).
+  - Empty state uses the new `EmptyState` component.
+- **`dashboard-view.tsx`** — added an "Activity Trend" area chart (opened vs closed
+  over 14 days) with gradient fills, CartesianGrid, custom tooltip, and a legend
+  showing totals. StatCards now have colored top accent bars and icon chips.
+  Recent-bugs empty state uses `EmptyState`.
+- **`app-sidebar.tsx`** — added a "Search… ⌘K" command-palette trigger button at
+  the top (below the brand), dispatches a custom event to open the palette.
+- **`app-content.tsx`** — wired up `useKeyboardShortcuts`, the `CommandPalette`,
+  the `ShortcutsHelpDialog`, and the `AppFooter`. Listens for the
+  `ib4g:open-command-palette` custom event from the sidebar. Mobile header now
+  has a command-palette icon button.
+
+### Styling polish
+- KPI cards: colored top accent bars (slate/amber/emerald/rose) + icon-in-rounded-chip
+- Trend chart: gradient area fills, dashed grid lines, themed tooltip
+- Bulk toolbar: `bg-primary/5` highlight + slide-in animation
+- Saved-filter chips with popover preview (shows JSON of the filter)
+- Staggered fade-in animations on table rows and timeline items
+- `EmptyState` with blurred icon halo for consistent empty UX
+- Sticky footer with live stats + ⌘K hint
+
+## Verification results (agent-browser QA at 1440×900 + iPhone 14)
+
+| Flow | Result |
+|------|--------|
+| Dashboard renders 4 KPI cards + trend chart + 3 charts + recent | ✅ |
+| Trend chart shows "Activity Trend", "Opened", "Closed" with totals | ✅ |
+| Bug list: checkbox column + select-all with indeterminate state | ✅ |
+| Selecting a row → bulk toolbar slides in (Status/Priority/Stage/Delete) | ✅ |
+| Bulk priority change → "Priority changed to critical (bulk)" event recorded | ✅ |
+| Export dropdown → CSV download (verified file content: 14 columns, all bugs) | ✅ |
+| Export dropdown → JSON download supported | ✅ |
+| Import dialog: paste JSON → bug created with labels (ui, regression) | ✅ |
+| Command palette (⌘K): Quick Actions + Navigation + Appearance + Recent Bugs | ✅ |
+| `?` opens shortcuts help dialog with 3 groups | ✅ |
+| `n` opens new-bug form | ✅ |
+| `g d` / `g b` / `g l` / `g e` navigate between views | ✅ |
+| `/` focuses the bug-list search box | ✅ |
+| `Esc` closes dialogs / returns from bug detail | ✅ |
+| Bug detail: Activity timeline shows "Priority changed to critical (bulk)" + "Status changed from open to closed" | ✅ |
+| Saved filters: set priority=Critical → "Save current" → "Critical bugs" chip appears → persisted in localStorage | ✅ |
+| Footer: shows Open/Closed/Critical counts + "Press ⌘K for commands" | ✅ |
+| Mobile: hamburger sidebar, `g d`/`n`/`Esc` shortcuts all work | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+| All 5 API endpoints smoke-tested | ✅ all 200 |
+
+### Bugs fixed during QA
+1. **Prisma Client not regenerated** after adding `BugEvent` model → `db.bugEvent` was
+   `undefined` at runtime. Fixed by running `bun run db:generate` and clearing `.next`.
+2. **`labelId=all`** was being sent to the API and filtered literally — already fixed in
+   Round 1, but confirmed still working.
+3. **`SidebarView` type** was imported from `@/lib/types` but lives in `@/lib/constants`.
+   Fixed all 4 import sites.
+4. **`BugInput.overview`** field was missing from the interface (used by the form). Added.
+5. **`skipDuplicates: true`** on `db.bugLabel.createMany` is not supported on SQLite.
+   Removed it (the bulk route already pre-filters duplicates).
+6. **React Compiler** rejected the manual `useMemo` in `use-keyboard-shortcuts.ts`
+   (`goTo` closure didn't match declared deps). Refactored to drop the useMemo and
+   use a `handlersRef` for stable handler references.
+7. **`serialize.ts`** had a type mismatch: Prisma returns `Date` but the `Label` interface
+   declares `createdAt: string`. Refactored to a `DateLike = Date | string` union and
+   centralized ISO conversion.
+
+## New file map (additions only)
+
+```
+prisma/schema.prisma                         ← + BugEvent model + Bug.events relation
+src/lib/events.ts                            ← recordEvent + recordDiffEvents
+src/lib/serialize.ts                         ← refactored (DateLike union)
+src/lib/types.ts                             ← + BugEvent, TrendPoint, SavedFilter, BulkAction, ImportItem, BugInput.overview
+src/hooks/use-bugs.ts                        ← + useBugEvents, useBulkAction, useBugTrend, useExportBugs, useImportBugs
+src/hooks/use-saved-filters.ts               ← localStorage-backed saved filters
+src/hooks/use-keyboard-shortcuts.ts          ← global keyboard shortcuts hook
+src/app/api/bugs/[id]/events/route.ts        ← GET activity timeline
+src/app/api/bugs/bulk/route.ts               ← POST bulk actions
+src/app/api/bugs/trend/route.ts               ← GET opened/closed trend
+src/app/api/bugs/export/route.ts             ← GET CSV/JSON download
+src/app/api/bugs/import/route.ts             ← POST JSON import
+src/components/bugs/activity-timeline.tsx     ← vertical event timeline
+src/components/bugs/command-palette.tsx      ← cmdk-based ⌘K palette
+src/components/bugs/shortcuts-help-dialog.tsx ← ? help dialog
+src/components/bugs/app-footer.tsx           ← sticky footer with stats
+src/components/bugs/empty-state.tsx           ← reusable empty state
+src/components/bugs/bug-list-view.tsx         ← + multi-select, bulk toolbar, export/import, saved filters
+src/components/bugs/bug-detail-view.tsx       ← + Activity timeline card
+src/components/bugs/dashboard-view.tsx       ← + trend area chart + accent bars
+src/components/bugs/app-sidebar.tsx          ← + ⌘K trigger button
+src/components/bugs/app-content.tsx          ← + command palette + shortcuts + footer wiring
+```
+
+## Unresolved issues / risks
+
+1. **Trend chart mostly flat** — the seed data was created with default `createdAt` (today),
+   so the 14-day trend shows all activity on the last day. Once real bugs are created/closed
+   over time, the chart will populate naturally. Could backfill seed data with random dates
+   in a future round.
+2. **No bulk-label-remove** — only "add label" is supported in bulk. Removing labels in
+   bulk would require a separate action type.
+3. **Import doesn't deduplicate by jiraId** — importing the same Jira ID twice creates two
+   bugs. Could add a unique constraint + upsert logic later.
+4. **Saved filters are per-browser** (localStorage) — not synced across devices. Would need
+   a user account + DB table to sync.
+5. **Command palette recent bugs** — limited to the 5 most recent from the stats endpoint.
+   Could add a "search all bugs" mode with a dedicated API.
+
+## Priority recommendations for the next phase
+
+1. **Backfill seed data** with realistic `createdAt`/`updatedAt` spread over 30 days so the
+   trend chart looks alive on first load.
+2. **Bulk label remove** + bulk assignee change.
+3. **Import deduplication** by jiraId (upsert).
+4. **Activity log global view** — a dashboard widget or dedicated page showing the most
+   recent events across ALL bugs (not just per-bug).
+5. **Saved filters as DB entities** (requires auth) for cross-device sync.
+6. **Command palette "search all bugs"** mode — type to search the full bug list, not just
+   the 5 recent ones.
+7. **Drag-and-drop** between bugs (e.g. drag a label onto a bug row).
+8. **CSV import** (in addition to JSON) — parse a CSV file into the import payload.
+9. **Notifications** — toast when a long-running bulk action completes (for large sets).
+
+## How to run (unchanged)
+
+```bash
+bun run dev          # http://localhost:3000
+bun run lint         # ESLint (0 errors)
+bunx tsc --noEmit    # TypeScript (0 errors, project files only)
+bun run db:push      # apply schema (BugEvent model added)
+bun run db:generate  # regenerate Prisma Client (REQUIRED after schema change)
+bun run scripts/seed.ts   # (re)seed sample data
+```
+
+The dev server is running, the database has 9 bugs + 8 labels, and the new BugEvent table
+is populated with real activity from the QA session (status/priority changes recorded).
+

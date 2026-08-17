@@ -1,6 +1,17 @@
 import type { Bug, Label } from "@/lib/types"
 
-// Raw Prisma bug row (with labels included)
+// Prisma returns Date objects; we serialize to ISO strings. Use a loose type
+// that accepts both Date and string to avoid type friction at call sites.
+type DateLike = Date | string
+
+type PrismaLabel = {
+  id: string
+  name: string
+  color: string
+  createdAt: DateLike
+  updatedAt: DateLike
+}
+
 type BugWithLabels = {
   id: string
   jiraId: string | null
@@ -27,9 +38,9 @@ type BugWithLabels = {
   priority: string
   assignee: string | null
   reporter: string
-  createdAt: Date
-  updatedAt: Date
-  labels?: { label: Label }[] | { label: Label }[]
+  createdAt: DateLike
+  updatedAt: DateLike
+  labels?: { label: PrismaLabel }[]
 }
 
 function safeParseArray(raw: string | null): string[] {
@@ -46,6 +57,20 @@ function safeParseArray(raw: string | null): string[] {
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean)
+  }
+}
+
+function toDate(value: DateLike): Date {
+  return value instanceof Date ? value : new Date(value)
+}
+
+function serializePrismaLabel(row: PrismaLabel): Label {
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    createdAt: toDate(row.createdAt).toISOString(),
+    updatedAt: toDate(row.updatedAt).toISOString(),
   }
 }
 
@@ -79,18 +104,12 @@ export function serializeBug(row: BugWithLabels): Bug {
     priority: row.priority as Bug["priority"],
     assignee: row.assignee,
     reporter: row.reporter,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    labels: row.labels ? row.labels.map((l) => l.label) : [],
+    createdAt: toDate(row.createdAt).toISOString(),
+    updatedAt: toDate(row.updatedAt).toISOString(),
+    labels: row.labels ? row.labels.map((l) => serializePrismaLabel(l.label)) : [],
   }
 }
 
-export function serializeLabel(row: Label): Label {
-  return {
-    id: row.id,
-    name: row.name,
-    color: row.color,
-    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
-  }
+export function serializeLabel(row: PrismaLabel): Label {
+  return serializePrismaLabel(row)
 }

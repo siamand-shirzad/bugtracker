@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Menu, Plus, Bug as BugIcon } from "lucide-react"
+import { Menu, Plus, Bug as BugIcon, Command as CommandIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { AppSidebar } from "@/components/bugs/app-sidebar"
 import { DashboardView } from "@/components/bugs/dashboard-view"
 import { BugListView } from "@/components/bugs/bug-list-view"
@@ -12,9 +11,13 @@ import { BugDetailView } from "@/components/bugs/bug-detail-view"
 import { InfoView } from "@/components/bugs/info-view"
 import { LabelsView } from "@/components/bugs/labels-view"
 import { BugFormDialog } from "@/components/bugs/bug-form-dialog"
+import { CommandPalette } from "@/components/bugs/command-palette"
+import { ShortcutsHelpDialog } from "@/components/bugs/shortcuts-help-dialog"
+import { AppFooter } from "@/components/bugs/app-footer"
 import { useBugStore } from "@/store/bug-store"
 import { useLabels } from "@/hooks/use-bugs"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 
 export function AppContent() {
   const view = useBugStore((s) => s.view)
@@ -26,6 +29,22 @@ export function AppContent() {
   const openCreateForm = useBugStore((s) => s.openCreateForm)
 
   const isMobile = useIsMobile()
+
+  // Command palette + shortcuts help state
+  const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
+
+  const { shortcuts } = useKeyboardShortcuts({
+    onOpenCommandPalette: () => setCommandPaletteOpen(true),
+    onShowShortcutsHelp: () => setShortcutsOpen(true),
+  })
+
+  // Allow sidebar / other components to open the command palette via custom event
+  React.useEffect(() => {
+    const handler = () => setCommandPaletteOpen(true)
+    window.addEventListener("ib4g:open-command-palette", handler)
+    return () => window.removeEventListener("ib4g:open-command-palette", handler)
+  }, [])
 
   // Keep labels cache in sync (so badges elsewhere can use it)
   const { data: labels = [] } = useLabels()
@@ -97,6 +116,14 @@ export function AppContent() {
               </div>
               <span className="text-sm font-semibold">IB4G BugTracker</span>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => setCommandPaletteOpen(true)}
+            >
+              <CommandIcon className="h-4 w-4" />
+            </Button>
             <Button size="sm" className="h-8 gap-1.5" onClick={openCreateForm}>
               <Plus className="h-4 w-4" />
               New
@@ -104,16 +131,31 @@ export function AppContent() {
           </header>
         )}
 
-        {/* Scrollable content area */}
+        {/* Scrollable content area + sticky footer */}
         <main className="flex-1 overflow-y-auto scrollbar-thin">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
             {renderView()}
           </div>
+          <AppFooter />
         </main>
       </div>
 
       {/* Form dialog (global) */}
       <BugFormDialog />
+
+      {/* Command palette (global) */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        onShowShortcuts={() => setShortcutsOpen(true)}
+      />
+
+      {/* Keyboard shortcuts help (global) */}
+      <ShortcutsHelpDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        shortcuts={shortcuts}
+      />
     </div>
   )
 }

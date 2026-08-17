@@ -79,6 +79,7 @@ export interface BugStats {
 export interface BugInput {
   jiraId?: string | null
   summary: string
+  overview?: string
   overviewLoginCondition?: string | null
   overviewPlatform?: string | null
   overviewModule?: string | null
@@ -148,4 +149,84 @@ export interface EnvVarInfo {
   name: string
   description: string
   required: boolean
+}
+
+// ---- Bug activity events (audit trail) ----
+export type BugEventType =
+  | "created"
+  | "status_changed"
+  | "priority_changed"
+  | "stage_changed"
+  | "assignee_changed"
+  | "labels_changed"
+  | "summary_changed"
+  | "details_updated"
+  | "deleted"
+
+export interface BugEvent {
+  id: string
+  bugId: string
+  type: BugEventType
+  field: string | null
+  oldValue: string | null
+  newValue: string | null
+  actor: string
+  summary: string
+  createdAt: string
+}
+
+// ---- Dashboard trend data ----
+export interface TrendPoint {
+  date: string // ISO date (yyyy-mm-dd)
+  opened: number
+  closed: number
+}
+
+// ---- Saved filter presets ----
+export interface SavedFilter {
+  id: string
+  name: string
+  filters: BugFilters
+  createdAt: string
+}
+
+// ---- Bulk action payload ----
+export interface BulkAction {
+  bugIds: string[]
+  action:
+    | { type: "status"; value: BugStatus }
+    | { type: "priority"; value: BugPriority }
+    | { type: "stage"; value: EnvironmentStage }
+    | { type: "addLabel"; value: string }
+    | { type: "delete" }
+}
+
+// ---- Import payload (one item) ----
+export interface ImportItem {
+  summary: string
+  jiraId?: string
+  overview?: string
+  overviewLoginCondition?: string | null
+  overviewPlatform?: string | null
+  overviewModule?: string | null
+  overviewTrigger?: string | null
+  overviewIssue?: string | null
+  envPage?: string | null
+  envPlatform?: string | null
+  envOS?: string | null
+  envBrowser?: string | null
+  preconditions?: string[]
+  stepsToReproduce?: string[]
+  actualResult?: string | null
+  expectedResult?: string | null
+  userImpact?: string | null
+  businessImpact?: string | null
+  qaImpact?: string | null
+  technicalNotes?: string | null
+  environmentStage?: EnvironmentStage
+  status?: BugStatus
+  priority?: BugPriority
+  assignee?: string | null
+  reporter?: string
+  labelNames?: string[]
 }

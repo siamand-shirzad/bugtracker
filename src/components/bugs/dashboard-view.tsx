@@ -3,9 +3,13 @@
 import * as React from "react"
 import Link from "next/link"
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Line,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -21,27 +25,34 @@ import {
   CheckCircle2,
   CircleDot,
   Clock,
+  Flame,
+  Plus,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/bugs/empty-state"
 import { StatusBadge } from "@/components/bugs/status-badge"
 import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
 import { LabelBadge } from "@/components/bugs/label-badge"
-import { useBugStats } from "@/hooks/use-bugs"
+import { useBugStats, useBugTrend } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
 import { PRIORITY_CONFIG, STATUS_CONFIG, STAGE_CONFIG } from "@/lib/constants"
 import type { BugPriority, BugStatus, EnvironmentStage } from "@/lib/types"
-import { formatDistanceToNow } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 
 export function DashboardView() {
   const { data: stats, isLoading } = useBugStats()
+  const { data: trend, isLoading: trendLoading } = useBugTrend(14)
   const setView = useBugStore((s) => s.setView)
   const selectBug = useBugStore((s) => s.selectBug)
+  const openCreateForm = useBugStore((s) => s.openCreateForm)
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -67,6 +78,7 @@ export function DashboardView() {
           value={stats?.total}
           icon={BugIcon}
           accent="text-foreground"
+          accentBar="bg-foreground"
           loading={isLoading}
           hint="All-time tracked"
         />
@@ -75,6 +87,7 @@ export function DashboardView() {
           value={stats?.open}
           icon={CircleDot}
           accent="text-amber-600 dark:text-amber-400"
+          accentBar="bg-amber-500"
           loading={isLoading}
           hint="Awaiting resolution"
         />
@@ -83,6 +96,7 @@ export function DashboardView() {
           value={stats?.closed}
           icon={CheckCircle2}
           accent="text-emerald-600 dark:text-emerald-400"
+          accentBar="bg-emerald-500"
           loading={isLoading}
           hint="Resolved & verified"
         />
@@ -91,10 +105,117 @@ export function DashboardView() {
           value={stats?.critical}
           icon={AlertOctagon}
           accent="text-rose-600 dark:text-rose-400"
+          accentBar="bg-rose-500"
           loading={isLoading}
           hint="Needs immediate attention"
         />
       </div>
+
+      {/* Trend chart (opened vs closed over 14 days) */}
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                Activity Trend
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                Bugs opened vs closed — last 14 days
+              </CardDescription>
+            </div>
+            {trend && (
+              <div className="flex items-center gap-3 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-sm bg-rose-500" />
+                  <span className="text-muted-foreground">Opened</span>
+                  <span className="font-semibold tabular-nums">{trend.totalOpened}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+                  <span className="text-muted-foreground">Closed</span>
+                  <span className="font-semibold tabular-nums">{trend.totalClosed}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          {trendLoading ? (
+            <Skeleton className="h-[220px] w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart
+                data={trend?.points ?? []}
+                margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
+              >
+                <defs>
+                  <linearGradient id="openedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-3)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--chart-3)" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="closedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--border)"
+                  vertical={false}
+                  opacity={0.5}
+                />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(d: string) => format(new Date(d), "MMM d")}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={24}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={28}
+                />
+                <Tooltip
+                  cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+                  contentStyle={{
+                    borderRadius: 8,
+                    border: "1px solid var(--border)",
+                    background: "var(--popover)",
+                    color: "var(--popover-foreground)",
+                    fontSize: 12,
+                  }}
+                  labelFormatter={(d: string) => format(new Date(d), "EEEE, MMM d")}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="opened"
+                  name="Opened"
+                  stroke="var(--chart-3)"
+                  strokeWidth={2}
+                  fill="url(#openedGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="closed"
+                  name="Closed"
+                  stroke="var(--chart-2)"
+                  strokeWidth={2}
+                  fill="url(#closedGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -294,9 +415,17 @@ export function DashboardView() {
               ))}
             </div>
           ) : (stats?.recent ?? []).length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
-              <BugIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              No bug reports yet.
+            <div className="py-8">
+              <EmptyState
+                icon={BugIcon}
+                title="No bug reports yet"
+                description="Create your first bug report to see activity here."
+                action={{
+                  label: "New bug",
+                  icon: Plus,
+                  onClick: () => openCreateForm(),
+                }}
+              />
             </div>
           ) : (
             <div className="space-y-1">
@@ -355,6 +484,7 @@ function StatCard({
   accent,
   loading,
   hint,
+  accentBar,
 }: {
   label: string
   value: number | undefined
@@ -362,15 +492,22 @@ function StatCard({
   accent: string
   loading?: boolean
   hint?: string
+  accentBar?: string
 }) {
   return (
-    <Card className="overflow-hidden relative group">
+    <Card className="overflow-hidden relative group hover:shadow-md transition-shadow">
+      {/* Top accent bar */}
+      {accentBar && (
+        <div className={cn("absolute top-0 left-0 right-0 h-0.5", accentBar)} />
+      )}
       <CardHeader className="pb-1.5 pt-4">
         <div className="flex items-center justify-between">
           <CardDescription className="text-[11px] font-semibold uppercase tracking-wider">
             {label}
           </CardDescription>
-          <Icon className={cn("h-4 w-4", accent)} />
+          <div className={cn("h-7 w-7 rounded-md flex items-center justify-center bg-muted/60")}>
+            <Icon className={cn("h-3.5 w-3.5", accent)} />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0 pb-4">

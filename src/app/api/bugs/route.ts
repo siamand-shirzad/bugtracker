@@ -242,6 +242,19 @@ export async function POST(req: NextRequest) {
       include: { labels: { include: { label: true } } },
     });
 
+    // Record creation event
+    await db.bugEvent.create({
+      data: {
+        bugId: created.id,
+        type: "created",
+        field: null,
+        oldValue: null,
+        newValue: created.id,
+        actor: input.reporter ?? "Anonymous",
+        summary: `Bug report created${created.jiraId ? ` (${created.jiraId})` : ""}`,
+      },
+    }).catch((e) => console.error("[create-event] failed:", e));
+
     return NextResponse.json(serializeBug(created), { status: 201 });
   } catch (err) {
     console.error("[POST /api/bugs] error:", err);

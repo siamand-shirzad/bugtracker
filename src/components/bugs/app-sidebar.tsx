@@ -6,6 +6,7 @@ import {
   Bug as BugIcon,
   ChevronsLeft,
   ChevronsRight,
+  Command as CommandIcon,
   Github,
   Moon,
   PanelLeftClose,
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SIDEBAR_ITEMS, APP_NAME, APP_VERSION } from "@/lib/constants"
 import { useBugStore } from "@/store/bug-store"
-import type { SidebarView } from "@/lib/types"
+import type { SidebarView } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 interface AppSidebarProps {
@@ -42,6 +43,11 @@ export function AppSidebar({ collapsed, onToggle, onNavigate, variant = "desktop
     onNavigate?.()
   }
 
+  const openCommandPalette = () => {
+    window.dispatchEvent(new CustomEvent("ib4g:open-command-palette"))
+    onNavigate?.()
+  }
+
   return (
     <aside
       className={cn(
@@ -60,6 +66,28 @@ export function AppSidebar({ collapsed, onToggle, onNavigate, variant = "desktop
             <span className="text-[10px] text-muted-foreground leading-tight">v{APP_VERSION}</span>
           </div>
         )}
+      </div>
+
+      {/* Command palette trigger */}
+      <div className="p-2 shrink-0">
+        <button
+          onClick={openCommandPalette}
+          title={collapsed ? "Command palette (⌘K)" : undefined}
+          className={cn(
+            "w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors border border-sidebar-border bg-sidebar/50 group",
+            collapsed && "justify-center",
+          )}
+        >
+          <CommandIcon className="h-3.5 w-3.5 shrink-0" />
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-left text-xs">Search…</span>
+              <kbd className="rounded border bg-sidebar px-1 py-0.5 text-[9px] font-mono font-medium">
+                ⌘K
+              </kbd>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Nav */}

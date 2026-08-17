@@ -9,11 +9,15 @@ import {
 import { toast } from "sonner"
 import type {
   Bug,
+  BugEvent,
   BugFilters,
   BugInput,
   BugListResponse,
   BugStats,
+  BulkAction,
+  ImportItem,
   Label,
+  TrendPoint,
 } from "@/lib/types"
 
 // ---- Query keys ----
@@ -256,5 +260,117 @@ export function useAppInfo() {
       return res.json()
     },
     staleTime: Infinity,
+  })
+}
+
+// ---- Bug activity events ----
+export function useBugEvents(bugId: string | null) {
+  return useQuery<BugEvent[]>({
+    queryKey: bugId ? [...bugKeys.detail(bugId), "events"] : ["bugs", "events", "none"],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/${bugId}/events`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch events")
+      }
+      return res.json()
+    },
+    enabled: Boolean(bugId),
+    staleTime: 5_000,
+  })
+}
+
+// ---- Bulk action ----
+export function useBulkAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (action: BulkAction) => {
+      const res = await fetch("/api/bugs/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to apply bulk action")
+      }
+      return res.json()
+    },
+    onSuccess: (data: { affected: number; action: string }) => {
+      qc.invalidateQueries({ queryKey: bugKeys.all })
+      toast.success(`Applied to ${data.affected} bug${data.affected === 1 ? "" : "s"}`)
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---- Trend (opened vs closed over time) ----
+export function useBugTrend(days = 14) {
+  return useQuery<{ points: TrendPoint[]; totalOpened: number; totalClosed: number }>({
+    queryKey: [...bugKeys.all, "trend", days],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/trend?days=${days}`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch trend")
+      }
+      return res.json()
+    },
+    staleTime: 30_000,
+  })
+}
+
+// ---- Export (CSV/JSON download) ----
+export function useExportBugs() {
+  return useMutation({
+    mutationFn: async ({ format, limit }: { format: "csv" | "json"; limit?: number }) => {
+      const params = new URLSearchParams({ format })
+      if (limit) params.set("limit", String(limit))
+      const res = await fetch(`/api/bugs/export?${params.toString()}`)
+      if (!res.ok) throw new Error("Failed to export bugs")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const cd = res.headers.get("Content-Disposition") || ""
+      const match = cd.match(/filename="?([^"]+)"?/)
+      a.download = match ? match[1] : `ib4g-bugs.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      return true
+    },
+    onSuccess: () => toast.success("Export downloaded"),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---- Import (JSON) ----
+export function useImportBugs() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (bugs: ImportItem[]) => {
+      const res = await fetch("/api/bugs/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bugs }),
+      })
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to import bugs")
+      }
+      return res.json()
+    },
+    onSuccess: (data: { created: number; skipped: number }) => {
+      qc.invalidateQueries({ queryKey: bugKeys.all })
+      qc.invalidateQueries({ queryKey: labelKeys.all })
+      if (data.skipped > 0) {
+        toast.warning(`Imported ${data.created}, skipped ${data.skipped}`)
+      } else {
+        toast.success(`Imported ${data.created} bug${data.created === 1 ? "" : "s"}`)
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }

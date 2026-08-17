@@ -7,8 +7,8 @@ import type {
   BugStatus,
   EnvironmentStage,
   Label,
-  SidebarView,
 } from "@/lib/types"
+import type { SidebarView } from "@/lib/constants"
 
 interface BugStore {
   // Navigation

@@ -40,6 +40,7 @@ model Bug {
   updatedAt              DateTime @updatedAt
 
   labels BugLabel[]
+  events BugEvent[]
 
   @@index([status])
   @@index([priority])
@@ -65,4 +66,20 @@ model BugLabel {
 
   @@id([bugId, labelId])
   @@index([labelId])
+}
+
+model BugEvent {
+  id        String   @id @default(cuid())
+  bugId     String
+  bug       Bug      @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  type      String   // created | status_changed | priority_changed | stage_changed | assignee_changed | updated | deleted
+  field     String?  // e.g. "status", "priority", "environmentStage", "assignee"
+  oldValue  String?
+  newValue  String?
+  actor     String   @default("Anonymous")
+  summary   String   // human-readable summary, e.g. "Priority changed from Medium to Critical"
+  createdAt DateTime @default(now())
+
+  @@index([bugId, createdAt])
+  @@index([createdAt])
 }
