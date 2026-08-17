@@ -30,6 +30,8 @@ interface BugStore {
 
   // Filters (for bug list)
   filters: BugFilters
+  groupBy: "none" | "assignee" | "priority" | "stage" | "status"
+  setGroupBy: (g: "none" | "assignee" | "priority" | "stage" | "status") => void
   setSearch: (s: string) => void
   setStatus: (s: BugStatus | "all") => void
   setPriority: (p: BugPriority | "all") => void
@@ -81,6 +83,8 @@ export const useBugStore = create<BugStore>((set) => ({
   setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
 
   filters: DEFAULT_FILTERS,
+  groupBy: "none",
+  setGroupBy: (groupBy) => set({ groupBy }),
   setSearch: (search) =>
     set((s) => ({ filters: { ...s.filters, search, page: 1 } })),
   setStatus: (status) =>

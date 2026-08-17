@@ -1341,3 +1341,103 @@ bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
 
 The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
 The burndown chart, assignee cycling shortcuts, and all previous features are functional.
+
+---
+
+# Round 9 — Group-By Feature & Component Refactor (Task ID: 9)
+
+## Current status assessment (start of round)
+
+Round 8 left the project stable: dev server healthy, all routes 200, no console
+errors, lint clean. The worklog's "Priority recommendations" listed 9 items;
+this round tackled the bug list "group by" feature.
+
+## Goals for this round
+
+1. **Bug list "group by"** — group by assignee/priority/stage/status
+2. **Component refactor** — extract FlatBugTable for cleaner conditional rendering
+3. **Styling polish** — group headers with badges, colored dots, open/closed counts
+
+## Completed modifications
+
+### Enhanced store — `src/store/bug-store.ts`
+- Added `groupBy: "none" | "assignee" | "priority" | "stage" | "status"` state.
+- Added `setGroupBy` action.
+
+### Enhanced `src/components/bugs/bug-list-view.tsx`
+- **Group-by selector** — a dropdown in the header (next to Export/Import) with
+  5 options: No grouping, By assignee, By priority, By stage, By status.
+- **Grouping logic** — `useMemo` that builds a sorted `Map<string, Bug[]>`:
+  - priority: critical → low
+  - stage: dev → staging → production
+  - status: open → closed
+  - assignee: alphabetical
+- **Conditional rendering** — when `groupBy !== "none"`, renders `<GroupedBugList>`;
+  otherwise renders `<FlatBugTable>`.
+- **Extracted `FlatBugTable` component** — the original table + pagination moved
+  into a separate component for cleaner conditional rendering. Takes all the
+  props it needs (bugs, selection state, pagination, handlers).
+- **New `GroupedBugList` component** — renders one Card per group with:
+  - Group header: colored dot/icon + label + count badge + "X open · Y closed" stats.
+  - Group rows: checkbox + jiraId + summary + status/priority/stage badges + labels.
+  - Staggered fade-in animation.
+  - Empty state + loading skeletons.
+- **`getGroupMeta` helper** — returns label/dot/icon for each group type using
+  the existing PRIORITY_CONFIG/STAGE_CONFIG/STATUS_CONFIG.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Group-by selector shows "No grouping" by default | ✅ |
+| Selecting "By priority" → 4 group cards (Critical, High, Medium, Low) with counts | ✅ |
+| Selecting "By assignee" → 4 group cards (Marco Diaz, Priya Nair, Sara Chen, Unassigned) | ✅ |
+| Switching back to "No grouping" → flat table renders correctly | ✅ |
+| Group headers show colored dots + count badges + open/closed stats | ✅ |
+| Group rows are clickable → navigate to bug detail | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+
+## New file map (additions in this round)
+
+```
+src/store/bug-store.ts                            ← + groupBy state + setGroupBy
+src/components/bugs/bug-list-view.tsx             ← + group-by selector, GroupedBugList, FlatBugTable (extracted)
+```
+
+## Unresolved issues / risks
+
+1. **Grouped view doesn't paginate** — shows all bugs from the current page's
+   worth of data. If a group has many bugs, they all render. Could add per-group
+   collapse/expand.
+2. **No group collapse** — groups are always expanded. Could add a collapsible
+   header to toggle visibility.
+3. **Bulk selection in grouped view** — the "select all" checkbox only works
+   in the flat table. The grouped view has per-row checkboxes but no group-level
+   select.
+4. **Group counts reflect current page only** — not the total across all pages.
+
+## Priority recommendations for the next phase
+
+1. **Collapsible groups** — click group header to expand/collapse.
+2. **Group-level "select all"** — checkbox in group header.
+3. **WebSocket mini-service** for real-time notification push.
+4. **Drag-and-drop labels** onto bug rows (dnd-kit installed).
+5. **User model + NextAuth** — real identities for comment authors + assignees.
+6. **CSV import with PapaParse** — robust multi-line cell handling.
+7. **Settings page** — theme, notification preferences, default filters.
+8. **Bug detail "Edit history"** — show all edits inline (not just events).
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs + 10 labels + ~24 events + 3 comments.
+The group-by feature (by assignee/priority/stage/status) is functional with colored
+group headers and per-group open/closed stats.
