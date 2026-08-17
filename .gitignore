@@ -3,14 +3,15 @@
 node_modules/
 
 # Build outputs
+.next/
 dist/
 build/
-.next/
+out/
 
 # Environment variables
 .env
 .env.local
-*.env.*
+.env.*
 
 # IDE files
 .vscode/
@@ -21,18 +22,22 @@ build/
 # Logs
 *.log
 
+# Python cache (if any Python files detected in project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # Temporary files
 *.tmp
+.DS_Store
+Thumbs.db
 
 # Coverage reports
 coverage/
 htmlcov/
-*.coverage
+.coverage
 
-# Prisma
-prisma/migrations/
-prisma/schema.db
-
-# TypeScript
-*.tsbuildinfo
+# Next.js specific
+.next/cache/
 ```

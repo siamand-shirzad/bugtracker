@@ -12,7 +12,7 @@ const BulkSchema = z.object({
     z.object({ type: z.literal("stage"), value: z.enum(["dev", "staging", "production"]) }),
     z.object({ type: z.literal("addLabel"), value: z.string().max(100) }),
     z.object({ type: z.literal("removeLabel"), value: z.string().max(100) }),
-    z.object({ type: z.literal("assignee"), value: z.string().nullable().max(200) }),
+    z.object({ type: z.literal("assignee"), value: z.string().max(200).nullable() }),
     z.object({ type: z.literal("delete") }),
   ]),
 });
