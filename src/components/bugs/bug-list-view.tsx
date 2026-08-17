@@ -7,12 +7,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileText,
   Filter,
   Plus,
   Search,
   Tags,
   Trash2,
   Upload,
+  UserCog,
   X,
   CheckSquare,
   Square,
@@ -220,23 +222,28 @@ export function BugListView() {
   // ---- Import dialog ----
   const [importOpen, setImportOpen] = React.useState(false)
   const [importText, setImportText] = React.useState("")
+  const [importFormat, setImportFormat] = React.useState<"json" | "csv">("json")
   const handleImport = () => {
     let parsed: ImportItem[] = []
-    try {
-      const obj = JSON.parse(importText)
-      if (Array.isArray(obj)) {
-        parsed = obj as ImportItem[]
-      } else if (obj && Array.isArray((obj as { bugs?: ImportItem[] }).bugs)) {
-        parsed = (obj as { bugs: ImportItem[] }).bugs
-      } else {
-        throw new Error("Expected an array or { bugs: [...] }")
+    if (importFormat === "csv") {
+      parsed = parseCsv(importText)
+    } else {
+      try {
+        const obj = JSON.parse(importText)
+        if (Array.isArray(obj)) {
+          parsed = obj as ImportItem[]
+        } else if (obj && Array.isArray((obj as { bugs?: ImportItem[] }).bugs)) {
+          parsed = (obj as { bugs: ImportItem[] }).bugs
+        } else {
+          throw new Error("Expected an array or { bugs: [...] }")
+        }
+      } catch (e) {
+        toast.error("Invalid JSON: " + (e instanceof Error ? e.message : "parse error"))
+        return
       }
-    } catch (e) {
-      toast.error("Invalid JSON: " + (e instanceof Error ? e.message : "parse error"))
-      return
     }
     if (parsed.length === 0) {
-      toast.error("No bugs found in JSON")
+      toast.error("No bugs found in input")
       return
     }
     importMut.mutate(parsed, {
@@ -405,6 +412,59 @@ export function BugListView() {
                         </DropdownMenuItem>
                       ))
                     )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                      <Tags className="h-3.5 w-3.5" /> Remove label <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="max-h-72 overflow-y-auto scrollbar-thin">
+                    <DropdownMenuLabel>Remove label from all</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {labels.length === 0 ? (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                        No labels yet
+                      </div>
+                    ) : (
+                      labels.map((l) => (
+                        <DropdownMenuItem
+                          key={l.id}
+                          onClick={() => applyBulk({ type: "removeLabel", value: l.id })}
+                        >
+                          <span className="font-medium mr-2">{l.name}</span>
+                          <Badge variant="outline" className="text-[10px] capitalize">
+                            {l.color}
+                          </Badge>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                      <UserCog className="h-3.5 w-3.5" /> Assignee <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Set assignee</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => applyBulk({ type: "assignee", value: "Sara Chen" })}>
+                      <span className="mr-2">🧑‍💻</span> Sara Chen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => applyBulk({ type: "assignee", value: "Marco Diaz" })}>
+                      <span className="mr-2">🧑‍💻</span> Marco Diaz
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => applyBulk({ type: "assignee", value: "Priya Nair" })}>
+                      <span className="mr-2">🧑‍💻</span> Priya Nair
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => applyBulk({ type: "assignee", value: null })}>
+                      <span className="mr-2 text-muted-foreground">∅</span>
+                      <span className="text-muted-foreground">Clear assignee</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button
@@ -745,22 +805,71 @@ export function BugListView() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Import bug reports from JSON</DialogTitle>
+            <DialogTitle>Import bug reports</DialogTitle>
             <DialogDescription>
-              Paste an array of bug objects (or <code>{"{ bugs: [...] }"}</code>). Each bug requires
-              a <code>summary</code> field; all other fields are optional. Templates in{" "}
-              <code>overview</code> will be auto-parsed.
+              Paste {importFormat === "json" ? "a JSON array" : "CSV with a header row"} or upload a file.
+              Each bug requires a <code>summary</code> field; all other fields are optional.
+              Templates in <code>overview</code> will be auto-parsed.
             </DialogDescription>
           </DialogHeader>
+
+          {/* Format toggle + file upload */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="inline-flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setImportFormat("json")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium transition-colors",
+                  importFormat === "json"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent text-muted-foreground",
+                )}
+              >
+                JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportFormat("csv")}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium transition-colors border-l",
+                  importFormat === "csv"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent text-muted-foreground",
+                )}
+              >
+                CSV
+              </button>
+            </div>
+            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+              <FileText className="h-3.5 w-3.5" />
+              Upload file
+              <input
+                type="file"
+                accept={importFormat === "json" ? ".json,application/json" : ".csv,text/csv"}
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  const text = await f.text()
+                  setImportText(text)
+                  e.target.value = ""
+                }}
+              />
+            </label>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="import-text" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              JSON payload
+              {importFormat === "json" ? "JSON payload" : "CSV data (with header row)"}
             </Label>
             <Textarea
               id="import-text"
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder={`[
+              placeholder={
+                importFormat === "json"
+                  ? `[
   {
     "summary": "Cannot login with valid credentials",
     "jiraId": "IB4G-1234",
@@ -769,9 +878,23 @@ export function BugListView() {
     "overview": "## Overview\\nIB4G (Production) > Logged Out > Web > Login Page > Submit > Error\\n...",
     "labelNames": ["auth", "regression"]
   }
-]`}
+]`
+                  : `summary,jiraId,priority,environmentStage,status,assignee,labels
+Cannot login,IB4G-1234,critical,production,open,Sara Chen,auth | regression
+Dark mode broken,IB4G-1235,medium,dev,open,Priya Nair,ui`
+              }
               className="min-h-[280px] font-mono text-xs scrollbar-thin"
             />
+            <p className="text-[11px] text-muted-foreground">
+              {importFormat === "csv" && (
+                <>
+                  CSV columns: <code>summary</code> (required), <code>jiraId</code>,{" "}
+                  <code>priority</code>, <code>environmentStage</code>, <code>status</code>,{" "}
+                  <code>assignee</code>, <code>labels</code> (pipe-separated),{" "}
+                  <code>envPlatform</code>, <code>envOS</code>, <code>envBrowser</code>.
+                </>
+              )}
+            </p>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setImportOpen(false)}>
@@ -840,4 +963,75 @@ function SaveCurrentFilterButton({
       </PopoverContent>
     </Popover>
   )
+}
+
+// ---- CSV parser (RFC 4180-ish) ----
+function parseCsv(text: string): ImportItem[] {
+  const rows: string[][] = []
+  let field = ""
+  let row: string[] = []
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        field += c
+      }
+    } else {
+      if (c === '"') {
+        inQuotes = true
+      } else if (c === ",") {
+        row.push(field)
+        field = ""
+      } else if (c === "\n") {
+        row.push(field)
+        rows.push(row)
+        row = []
+        field = ""
+      } else if (c === "\r") {
+        // skip
+      } else {
+        field += c
+      }
+    }
+  }
+  // last field
+  if (field.length > 0 || row.length > 0) {
+    row.push(field)
+    rows.push(row)
+  }
+  if (rows.length < 2) return []
+  const headers = rows[0].map((h) => h.trim().toLowerCase())
+  const items: ImportItem[] = []
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r]
+    if (cells.length === 1 && !cells[0].trim()) continue
+    const obj: Record<string, string> = {}
+    for (let c = 0; c < headers.length && c < cells.length; c++) {
+      obj[headers[c]] = cells[c]
+    }
+    const summary = obj.summary || obj.title || ""
+    if (!summary) continue
+    items.push({
+      summary,
+      jiraId: obj.jiraid || obj.jira_id || undefined,
+      priority: (obj.priority as ImportItem["priority"]) || undefined,
+      environmentStage: (obj.environmentstage || obj.stage) as ImportItem["environmentStage"] | undefined,
+      status: obj.status as ImportItem["status"] | undefined,
+      assignee: obj.assignee || undefined,
+      reporter: obj.reporter || undefined,
+      envPlatform: obj.envplatform || obj.platform || undefined,
+      envOS: obj.envos || obj.os || undefined,
+      envBrowser: obj.envbrowser || obj.browser || undefined,
+      labelNames: (obj.labels || "").split("|").map((s) => s.trim()).filter(Boolean),
+    })
+  }
+  return items
 }

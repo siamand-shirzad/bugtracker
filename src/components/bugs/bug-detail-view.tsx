@@ -21,6 +21,7 @@ import {
   Loader2,
   Monitor,
   Pencil,
+  Printer,
   ShieldAlert,
   Smartphone,
   Terminal,
@@ -56,6 +57,7 @@ import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
 import { LabelBadge } from "@/components/bugs/label-badge"
 import { ActivityTimeline } from "@/components/bugs/activity-timeline"
+import { RelatedBugsCard } from "@/components/bugs/related-bugs-card"
 import { useBug, useBugEvents, useDeleteBug, useUpdateBug } from "@/hooks/use-bugs"
 import { useBugStore } from "@/store/bug-store"
 import {
@@ -134,7 +136,7 @@ export function BugDetailView() {
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex items-start gap-2">
-        <Button variant="ghost" size="sm" className="gap-1 shrink-0" onClick={handleBack}>
+        <Button variant="ghost" size="sm" className="gap-1 shrink-0 no-print" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Back</span>
         </Button>
@@ -156,10 +158,14 @@ export function BugDetailView() {
             <StageBadge stage={bug.environmentStage} />
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 no-print">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopyTemplate}>
             <ClipboardCopy className="h-4 w-4" />
             <span className="hidden sm:inline">Copy template</span>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" />
+            <span className="hidden sm:inline">Print</span>
           </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openEditForm(bug.id)}>
             <Pencil className="h-4 w-4" />
@@ -371,7 +377,7 @@ export function BugDetailView() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-4 no-print">
           {/* Properties (Quick Edit) */}
           <Card>
             <CardHeader className="pb-3">
@@ -539,6 +545,13 @@ export function BugDetailView() {
               <ActivityTimeline events={events} isLoading={eventsLoading} />
             </CardContent>
           </Card>
+
+          {/* Related bugs */}
+          <RelatedBugsCard
+            bugId={bug.id}
+            bugSummary={bug.summary}
+            bugLabels={bug.labels}
+          />
         </div>
       </div>
     </div>

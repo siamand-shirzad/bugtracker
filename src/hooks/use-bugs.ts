@@ -374,3 +374,54 @@ export function useImportBugs() {
     onError: (e: Error) => toast.error(e.message),
   })
 }
+
+// ---- Search bugs (for command palette "search all" mode) ----
+export function useBugSearch(query: string, limit = 10) {
+  return useQuery<{ data: Bug[]; q: string; total: number }>({
+    queryKey: [...bugKeys.all, "search", query, limit],
+    queryFn: async () => {
+      const params = new URLSearchParams({ q: query, limit: String(limit) })
+      const res = await fetch(`/api/bugs/search?${params.toString()}`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to search bugs")
+      }
+      return res.json()
+    },
+    enabled: query.trim().length >= 2,
+    staleTime: 15_000,
+  })
+}
+
+// ---- Global activity feed (recent events across ALL bugs) ----
+export function useGlobalActivity(limit = 20) {
+  return useQuery<{ events: Array<{ id: string; bugId: string; type: string; summary: string; actor: string; createdAt: string; bugSummary: string; jiraId: string | null }> }>({
+    queryKey: [...bugKeys.all, "activity", limit],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/activity?limit=${limit}`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch activity")
+      }
+      return res.json()
+    },
+    staleTime: 15_000,
+  })
+}
+
+// ---- Related bugs (same module / platform / labels) ----
+export function useRelatedBugs(bugId: string | null, limit = 5) {
+  return useQuery<{ data: Bug[] }>({
+    queryKey: bugId ? [...bugKeys.detail(bugId), "related"] : ["bugs", "related", "none"],
+    queryFn: async () => {
+      const res = await fetch(`/api/bugs/${bugId}/related?limit=${limit}`)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error || "Failed to fetch related bugs")
+      }
+      return res.json()
+    },
+    enabled: Boolean(bugId),
+    staleTime: 30_000,
+  })
+}

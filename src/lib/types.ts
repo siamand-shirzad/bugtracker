@@ -198,6 +198,8 @@ export interface BulkAction {
     | { type: "priority"; value: BugPriority }
     | { type: "stage"; value: EnvironmentStage }
     | { type: "addLabel"; value: string }
+    | { type: "removeLabel"; value: string }
+    | { type: "assignee"; value: string | null }
     | { type: "delete" }
 }
 

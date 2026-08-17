@@ -434,3 +434,192 @@ bun run scripts/seed.ts   # (re)seed sample data
 The dev server is running, the database has 9 bugs + 8 labels, and the new BugEvent table
 is populated with real activity from the QA session (status/priority changes recorded).
 
+
+---
+
+# Round 3 — Search, Activity Feed, Related Bugs & Polish (Task ID: 3)
+
+## Current status assessment (start of round)
+
+Round 2 left the project stable: dev server healthy, all routes 200, no console
+errors. The worklog's "Priority recommendations" listed 9 items; this round
+tackled the top 7 plus additional styling polish.
+
+## Goals for this round
+
+1. **Backfill seed data** with realistic 30-day spread + close events → trend chart alive
+2. **Command palette "search all bugs"** mode with dedicated search API
+3. **Global activity feed** widget on dashboard (events across ALL bugs)
+4. **CSV import** (in addition to JSON) with file upload
+5. **Bulk label remove** + **bulk assignee change**
+6. **Bug detail "Related bugs"** card (shared module/platform/stage/labels, scored)
+7. **Platform breakdown** chart on dashboard (stacked bar + legend with progress bars)
+8. **Styling polish** — print stylesheet, card hover lift, shimmer skeletons, pulse dots
+
+## Completed modifications
+
+### New API routes (5)
+- **`GET /api/bugs/search?q=…&limit=…`** — full-text search across summary, jiraId,
+  actualResult, expectedResult, technicalNotes, envPlatform, envPage, overviewModule.
+  Returns serialized bugs with badges-ready data.
+- **`GET /api/bugs/activity?limit=…`** — global activity feed: recent BugEvents across
+  ALL bugs, joined with bug summary + jiraId. Used by the dashboard widget.
+- **`GET /api/bugs/[id]/related?limit=…`** — finds bugs sharing module/platform/stage/
+  issue/labels with the source bug, scores each candidate (issue=4, module=3, platform=2,
+  label=2 each, stage=1), returns top N sorted by score.
+
+### Enhanced API routes
+- **`POST /api/bugs/bulk`** — added 2 new action types:
+  - `removeLabel` — deletes BugLabel rows for the given label across selected bugs,
+    records `labels_changed` events with oldValue=label.name, newValue=null.
+  - `assignee` — sets/clears the assignee field, records `assignee_changed` events
+    with before/after values.
+- **`POST /api/bugs/import`** — unchanged but now also reachable via CSV (parsed client-side).
+
+### New seed script — `scripts/reseed.ts`
+- Wipes all bugs/events/labels and recreates 12 bugs with:
+  - Realistic `createdAt` timestamps spread over 25 days
+  - 8 bugs marked `closed` with a `status_changed` event at a realistic later date
+  - 4 bugs still `open`
+  - Assignees (Sara Chen, Marco Diaz, Priya Nair) on most bugs
+  - 10 labels (added `notifications` + `reports`)
+  - 2 extra bug templates (email digest unsubscribe, OAuth mobile redirect, iOS keyboard,
+    CSV truncation) for richer trend data
+- Result: trend chart now shows 12 opened / 8 closed spread across 15 distinct days.
+
+### New hooks (`src/hooks/use-bugs.ts` appended)
+- `useBugSearch(query, limit=10)` — debounced search; enabled when query ≥ 2 chars;
+  staleTime 15s.
+- `useGlobalActivity(limit=20)` — fetches the global activity feed.
+- `useRelatedBugs(bugId, limit=5)` — fetches scored related bugs for the detail view.
+
+### New UI components (`src/components/bugs/`)
+- **`global-activity-feed.tsx`** — vertical timeline of recent events across all bugs.
+  Each entry shows the event icon, summary, bug jiraId + summary, relative time.
+  Clickable → navigates to that bug's detail. Loading skeletons + empty state.
+  ScrollArea capped at 360px. Staggered fade-in.
+- **`related-bugs-card.tsx`** — shows up to 5 related bugs in the detail sidebar.
+  Each row shows jiraId, summary, status/priority/stage badges, shared labels
+  (highlighted with "+N shared" count), and relative updated time. Clickable.
+- **`PlatformBreakdownCard`** (inside dashboard-view) — horizontal stacked bar showing
+  platform proportions + a legend with per-platform progress bars, emoji icons
+  (🌐 Web / 🔌 API / 📱 Mobile / 🖥️ Desktop), counts, and percentages.
+
+### Enhanced components
+- **`command-palette.tsx`** — major upgrade:
+  - Added `useBugSearch` integration. When the query is ≥ 2 chars, the palette
+    switches to "search mode": hides Quick Actions/Navigation/Appearance/Recent
+    groups and shows a single "Search results" group with up to 8 matching bugs.
+  - Each search result shows jiraId + summary + status/priority badges.
+  - Footer shows live match count when searching.
+  - Empty state differentiates between "no bugs match" and "no results".
+  - Loading spinner shown while fetching.
+  - Query resets when palette closes.
+- **`bug-list-view.tsx`**:
+  - Bulk toolbar now has 6 actions: Status, Priority, Stage, **Add label**,
+    **Remove label**, **Assignee**, Delete.
+  - Assignee dropdown offers 3 team members + "Clear assignee".
+  - Import dialog rewritten with a JSON/CSV format toggle and an "Upload file"
+    button that reads the file content into the textarea.
+  - CSV format shows a column-hint helper text.
+  - Added a client-side RFC-4180-ish CSV parser (`parseCsv`) that handles quoted
+    fields, escaped quotes, and maps known columns to ImportItem fields.
+- **`bug-detail-view.tsx`**:
+  - Added a **Print** button in the header (calls `window.print()`).
+  - Back button + sidebar marked `no-print` so printed output shows only the
+    9 content cards.
+  - Added the `RelatedBugsCard` at the bottom of the sidebar.
+- **`dashboard-view.tsx`**:
+  - Added a 2-column grid at the bottom with `GlobalActivityFeed` (left) and
+    `PlatformBreakdownCard` (right).
+
+### Styling polish (`src/app/globals.css`)
+- **Print stylesheet** — `@media print` hides `.no-print`, forces white background,
+  allows main to overflow visibly, adds `.break-inside-avoid`.
+- **`.card-hover`** — subtle translateY(-1px) + box-shadow on hover (light + dark).
+- **`.shimmer`** — gradient background animation for premium skeleton loading.
+- **`.pulse-dot`** — 2s ease-in-out scale/opacity pulse for live indicators.
+- **`.stagger-item`** — utility for staggered fade-in.
+
+## Verification results (agent-browser QA at 1440×900)
+
+| Flow | Result |
+|------|--------|
+| Trend chart shows 12 opened / 8 closed across 15 distinct days | ✅ |
+| Global Activity feed renders 15 events with bug summaries + relative times | ✅ |
+| Platform Breakdown: Web 7 (58%), API 3 (25%), Mobile 2 (17%) | ✅ |
+| Command palette search "auth" → 3 matching bugs with badges | ✅ |
+| Related Bugs card on detail shows 5 matches with shared labels | ✅ |
+| Bulk Assignee → "Sara Chen" applied to 2 bugs (verified via API) | ✅ |
+| CSV import → 2 test bugs imported from CSV text | ✅ |
+| CSV import file upload button present and accepts .csv | ✅ |
+| Import dialog JSON/CSV toggle works | ✅ |
+| Bulk Delete removed 2 CSV test bugs (back to 12) | ✅ |
+| Print button present in bug detail header | ✅ |
+| Dark mode toggle works (html class → "dark") | ✅ |
+| ESLint (`bun run lint`) | ✅ 0 errors, 0 warnings |
+| `bunx tsc --noEmit` (project files only) | ✅ 0 errors |
+| Console / runtime errors | ✅ none |
+| All new API endpoints smoke-tested | ✅ all 200 |
+
+## New file map (additions in this round)
+
+```
+scripts/reseed.ts                              ← wipe + 30-day-spread reseed
+src/app/api/bugs/search/route.ts               ← GET full-text search
+src/app/api/bugs/activity/route.ts             ← GET global activity feed
+src/app/api/bugs/[id]/related/route.ts         ← GET scored related bugs
+src/app/api/bugs/bulk/route.ts                 ← + removeLabel + assignee actions
+src/hooks/use-bugs.ts                          ← + useBugSearch, useGlobalActivity, useRelatedBugs
+src/lib/types.ts                               ← + removeLabel/assignee in BulkAction
+src/components/bugs/global-activity-feed.tsx   ← dashboard activity widget
+src/components/bugs/related-bugs-card.tsx      ← detail sidebar related bugs
+src/components/bugs/command-palette.tsx        ← + search-all mode
+src/components/bugs/bug-list-view.tsx          ← + Remove label, Assignee bulk, CSV import, file upload
+src/components/bugs/bug-detail-view.tsx        ← + Print button, Related Bugs card, no-print
+src/components/bugs/dashboard-view.tsx         ← + Global Activity + Platform Breakdown
+src/app/globals.css                            ← + print styles, card-hover, shimmer, pulse-dot
+```
+
+## Unresolved issues / risks
+
+1. **CSV import parser is basic** — handles quoted fields and escaped quotes but
+   doesn't handle multi-line quoted fields (newlines inside a quoted cell). For
+   robust CSV parsing, consider PapaParse in a future round.
+2. **Search is case-sensitive on SQLite** — `contains` without `mode: "insensitive"`
+   works on SQLite but is case-sensitive. Affects search API + list filter. Would
+   need FTS5 or Postgres for case-insensitive search.
+3. **Related bugs scoring is heuristic** — the weights (issue=4, module=3, etc.)
+   are reasonable but not configurable. Could expose as a setting.
+4. **Global activity feed limited to 20** — no pagination. For very active systems,
+   could add "Load more" or infinite scroll.
+5. **Assignee list is hardcoded** — Sara Chen, Marco Diaz, Priya Nair. No user
+   management yet; would need a User model + NextAuth.
+6. **Print layout** — basic; no page breaks between cards. Could add
+   `.break-inside-avoid` to each Card for cleaner printed output.
+
+## Priority recommendations for the next phase
+
+1. **Case-insensitive search** — migrate to Postgres or add SQLite FTS5 virtual table.
+2. **User management** — User model + NextAuth + assignee picker with real users.
+3. **PapaParse** for robust CSV import (handles multi-line cells, edge cases).
+4. **Activity feed pagination** — "Load more" button or infinite scroll.
+5. **Saved filters as DB entities** — sync across devices (requires auth).
+6. **Notifications** — toast when a long-running bulk action completes.
+7. **Drag-and-drop** labels onto bug rows (dnd-kit is already installed).
+8. **Bug detail "share" button** — copy a deep link to the bug.
+9. **Dashboard date-range picker** — let users change the trend window (7/14/30/90 days).
+
+## How to run (unchanged)
+
+```bash
+bun run dev                      # http://localhost:3000
+bun run lint                     # ESLint (0 errors)
+bunx tsc --noEmit                # TypeScript (0 errors, project files only)
+bun run scripts/reseed.ts        # wipe + reseed with 30-day-spread data
+```
+
+The dev server is running, the database has 12 bugs (4 open, 8 closed) + 10 labels
++ ~24 events (12 created + 8 status_changed + 4 from QA), all with realistic
+timestamps spread over the last 25 days. The trend chart, global activity feed,
+and platform breakdown are all populated with real data.

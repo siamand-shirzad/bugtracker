@@ -26,6 +26,7 @@ import {
   CircleDot,
   Clock,
   Flame,
+  Globe,
   Plus,
   TrendingDown,
   TrendingUp,
@@ -36,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/bugs/empty-state"
+import { GlobalActivityFeed } from "@/components/bugs/global-activity-feed"
 import { StatusBadge } from "@/components/bugs/status-badge"
 import { PriorityBadge } from "@/components/bugs/priority-badge"
 import { StageBadge } from "@/components/bugs/stage-badge"
@@ -473,6 +475,12 @@ export function DashboardView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Global activity feed + Platform breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <GlobalActivityFeed limit={15} />
+        <PlatformBreakdownCard stats={stats} loading={isLoading} />
+      </div>
     </div>
   )
 }
@@ -520,6 +528,110 @@ function StatCard({
         )}
         {hint && (
           <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface PlatformBreakdownCardProps {
+  stats: ReturnType<typeof useBugStats>["data"]
+  loading: boolean
+}
+
+const PLATFORM_COLORS: Record<string, string> = {
+  Web: "var(--chart-1)",
+  API: "var(--chart-3)",
+  Mobile: "var(--chart-2)",
+  Desktop: "var(--chart-4)",
+}
+
+const PLATFORM_ICONS: Record<string, string> = {
+  Web: "🌐",
+  API: "🔌",
+  Mobile: "📱",
+  Desktop: "🖥️",
+}
+
+function PlatformBreakdownCard({ stats, loading }: PlatformBreakdownCardProps) {
+  const platforms = stats?.byPlatform ?? []
+  const total = platforms.reduce((a, p) => a + p.value, 0) || 1
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Globe className="h-4 w-4 text-muted-foreground" />
+          Platform Breakdown
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Bug reports grouped by environment platform
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : platforms.length === 0 ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            <Globe className="h-7 w-7 mx-auto opacity-40 mb-2" />
+            No platform data yet
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Horizontal stacked bar */}
+            <div className="flex h-3 rounded-full overflow-hidden border bg-muted/30">
+              {platforms.map((p) => {
+                const width = (p.value / total) * 100
+                const color = PLATFORM_COLORS[p.name] ?? "var(--chart-5)"
+                return (
+                  <div
+                    key={p.name}
+                    style={{ width: `${width}%`, backgroundColor: color }}
+                    className="h-full transition-all hover:opacity-80"
+                    title={`${p.name}: ${p.value} (${width.toFixed(1)}%)`}
+                  />
+                )
+              })}
+            </div>
+            {/* Legend with bars */}
+            <div className="space-y-2">
+              {platforms
+                .sort((a, b) => b.value - a.value)
+                .map((p) => {
+                  const pct = ((p.value / total) * 100).toFixed(0)
+                  const color = PLATFORM_COLORS[p.name] ?? "var(--chart-5)"
+                  const icon = PLATFORM_ICONS[p.name] ?? "📦"
+                  return (
+                    <div
+                      key={p.name}
+                      className="flex items-center gap-3 group"
+                    >
+                      <span className="text-base leading-none w-5 text-center">
+                        {icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium">{p.name}</span>
+                          <span className="text-[11px] text-muted-foreground tabular-nums">
+                            {p.value} · {pct}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all group-hover:opacity-80"
+                            style={{ width: `${pct}%`, backgroundColor: color }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

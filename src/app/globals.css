@@ -184,3 +184,77 @@
   outline: none;
   box-shadow: 0 0 0 2px var(--ring);
 }
+
+/* ---- Stagger animation utility ---- */
+.stagger-item {
+  opacity: 0;
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* ---- Card hover lift ---- */
+.card-hover {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+}
+.dark .card-hover:hover {
+  box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.4);
+}
+
+/* ---- Print styles (for bug detail) ---- */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  main {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
+/* ---- Shimmer for skeletons ---- */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--muted-foreground) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ---- Subtle pulse for live indicators ---- */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}

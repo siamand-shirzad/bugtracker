@@ -11,6 +11,8 @@ const BulkSchema = z.object({
     z.object({ type: z.literal("priority"), value: z.enum(["low", "medium", "high", "critical"]) }),
     z.object({ type: z.literal("stage"), value: z.enum(["dev", "staging", "production"]) }),
     z.object({ type: z.literal("addLabel"), value: z.string() }),
+    z.object({ type: z.literal("removeLabel"), value: z.string() }),
+    z.object({ type: z.literal("assignee"), value: z.string().nullable() }),
     z.object({ type: z.literal("delete") }),
   ]),
 });
@@ -86,6 +88,77 @@ export async function POST(req: NextRequest) {
         success: true,
         affected: validIds.length,
         action: "addLabel",
+        data: updated.map(serializeBug),
+      });
+    }
+
+    if (action.type === "removeLabel") {
+      const label = await db.label.findUnique({
+        where: { id: action.value },
+        select: { id: true, name: true },
+      });
+      if (!label) {
+        return NextResponse.json({ error: "Label not found" }, { status: 404 });
+      }
+      await db.bugLabel.deleteMany({
+        where: { bugId: { in: validIds }, labelId: label.id },
+      });
+      await Promise.all(
+        validIds.map((bugId) =>
+          recordEvent({
+            bugId,
+            type: "labels_changed",
+            field: "labels",
+            oldValue: label.name,
+            newValue: null,
+            summary: `Label "${label.name}" removed (bulk)`,
+          }),
+        ),
+      );
+      const updated = await db.bug.findMany({
+        where: { id: { in: validIds } },
+        include: { labels: { include: { label: true } } },
+      });
+      return NextResponse.json({
+        success: true,
+        affected: validIds.length,
+        action: "removeLabel",
+        data: updated.map(serializeBug),
+      });
+    }
+
+    if (action.type === "assignee") {
+      const newAssignee = action.value;
+      const beforeMap = new Map<string, string>();
+      for (const b of bugs) {
+        beforeMap.set(b.id, b.assignee ?? "");
+      }
+      await db.bug.updateMany({
+        where: { id: { in: validIds } },
+        data: { assignee: newAssignee },
+      });
+      await Promise.all(
+        validIds.map((bugId) =>
+          recordEvent({
+            bugId,
+            type: "assignee_changed",
+            field: "assignee",
+            oldValue: beforeMap.get(bugId) || null,
+            newValue: newAssignee,
+            summary: newAssignee
+              ? `Assignee set to ${newAssignee} (bulk)`
+              : `Assignee cleared (bulk)`,
+          }),
+        ),
+      );
+      const updated = await db.bug.findMany({
+        where: { id: { in: validIds } },
+        include: { labels: { include: { label: true } } },
+      });
+      return NextResponse.json({
+        success: true,
+        affected: validIds.length,
+        action: "assignee",
         data: updated.map(serializeBug),
       });
     }
