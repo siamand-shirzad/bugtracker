@@ -41,3 +41,5 @@ htmlcov/
 # Next.js specific
 .next/cache/
 ```
+# Runtime
+.zscripts/*.pid
